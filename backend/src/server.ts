@@ -1,88 +1,88 @@
-import Fastify from 'fastify'
-import fastifyJwt from '@fastify/jwt'
-import fastifyCors from '@fastify/cors'
-import { registerUser, loginUser } from './auth.ts'
-import prisma from './db.ts'
+import Fastify from "fastify";
+import fastifyJwt from "@fastify/jwt";
+import fastifyCors from "@fastify/cors";
+import { registerUser, loginUser } from "./auth.ts";
+import prisma from "./db.ts";
 
-const port = parseInt(process.env.PORT || '3000')
-const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-me'
-const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173'
+const port = parseInt(process.env.PORT || "3000");
+const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
+const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
-const app = Fastify({ logger: true })
+const app = Fastify({ logger: true });
 
 // Register plugins
-await app.register(fastifyJwt, { secret: jwtSecret })
+await app.register(fastifyJwt, { secret: jwtSecret });
 await app.register(fastifyCors, {
   origin: frontendOrigin,
-  credentials: true
-})
+  credentials: true,
+});
 
 // Health check
-app.get('/health', async () => {
+app.get("/health", async () => {
   try {
-    await prisma.$queryRaw`SELECT 1`
-    return { status: 'ok', database: 'connected' }
+    await prisma.$queryRaw`SELECT 1`;
+    return { status: "ok", database: "connected" };
   } catch (e) {
-    return { status: 'ok', database: 'disconnected' }
+    return { status: "ok", database: "disconnected" };
   }
-})
+});
 
 // Auth Routes
-app.post('/auth/register', async (request, reply) => {
+app.post("/auth/register", async (request, reply) => {
   try {
-    const user = await registerUser(request.body)
-    const token = app.jwt.sign({ id: user.id, email: user.email })
+    const user = await registerUser(request.body);
+    const token = app.jwt.sign({ id: user.id, email: user.email });
 
     reply.send({
       token,
-      user: { id: user.id, email: user.email }
-    })
+      user: { id: user.id, email: user.email },
+    });
   } catch (error) {
-    reply.status(400).send({ error: (error as Error).message })
+    reply.status(400).send({ error: (error as Error).message });
   }
-})
+});
 
-app.post('/auth/login', async (request, reply) => {
+app.post("/auth/login", async (request, reply) => {
   try {
-    const user = await loginUser(request.body)
-    const token = app.jwt.sign({ id: user.id, email: user.email })
+    const user = await loginUser(request.body);
+    const token = app.jwt.sign({ id: user.id, email: user.email });
 
     reply.send({
       token,
-      user: { id: user.id, email: user.email }
-    })
+      user: { id: user.id, email: user.email },
+    });
   } catch (error) {
-    reply.status(401).send({ error: (error as Error).message })
+    reply.status(401).send({ error: (error as Error).message });
   }
-})
+});
 
 // Protected route example
 app.get<{ Reply: { message: string; userId: string } }>(
-  '/auth/me',
+  "/auth/me",
   { onRequest: [app.authenticate] },
   async (request) => {
     return {
-      message: 'Authenticated',
-      userId: request.user.id
-    }
-  }
-)
+      message: "Authenticated",
+      userId: request.user.id,
+    };
+  },
+);
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
-  await app.close()
-  await prisma.$disconnect()
-  process.exit(0)
-}
+  await app.close();
+  await prisma.$disconnect();
+  process.exit(0);
+};
 
-process.on('SIGINT', gracefulShutdown)
-process.on('SIGTERM', gracefulShutdown)
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
 
 // Start server
 try {
-  await app.listen({ port, host: '0.0.0.0' })
-  console.log(`Server running at http://0.0.0.0:${port}`)
+  await app.listen({ port, host: "0.0.0.0" });
+  console.log(`Server running at http://0.0.0.0:${port}`);
 } catch (err) {
-  app.log.error(err)
-  process.exit(1)
+  app.log.error(err);
+  process.exit(1);
 }
