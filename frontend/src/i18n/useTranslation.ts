@@ -51,6 +51,8 @@ export const useLanguageStore = create<LanguageStore>((set, get) => ({
 }));
 
 export function useTranslation() {
-  const { t } = useLanguageStore();
-  return { t };
+  // Subscribe to language changes to trigger re-renders
+  useLanguageStore((state) => state.language);
+  // Return the current t function which reads from the store
+  return { t: useLanguageStore.getState().t };
 }
