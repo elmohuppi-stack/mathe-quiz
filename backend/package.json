@@ -7,11 +7,13 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
+    "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
     "fastify": "^4.25.2",
     "@fastify/cors": "^8.5.0",

@@ -1,19 +1,24 @@
-import Fastify from "fastify";
+import Fastify, { FastifyReply, FastifyRequest } from "fastify";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCors from "@fastify/cors";
 import { z } from "zod";
-import { registerUser, loginUser, AppError } from "./auth.ts";
-import { getTranslatorFromRequest } from "./i18n/useI18n.ts";
-import { generateTask, Module } from "./tasks.ts";
-import { startSession, endSession, getModuleProgress } from "./sessions.ts";
-import { saveAnswer, getSessionStats } from "./answers.ts";
-import prisma from "./db.ts";
+import { registerUser, loginUser, AppError } from "./auth.js";
+import { getTranslatorFromRequest } from "./i18n/useI18n.js";
+import { generateTask, Module } from "./tasks.js";
+import { startSession, endSession, getModuleProgress } from "./sessions.js";
+import { saveAnswer, getSessionStats } from "./answers.js";
+import prisma from "./db.js";
 
 const port = parseInt(process.env.PORT || "3000");
 const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
 const app = Fastify({ logger: true });
+type AuthenticatedUser = { id: string; email: string };
+
+const getRequestUser = (request: FastifyRequest): AuthenticatedUser => {
+  return request.user as AuthenticatedUser;
+};
 
 // Register plugins
 await app.register(fastifyJwt, { secret: jwtSecret });
@@ -21,6 +26,10 @@ await app.register(fastifyCors, {
   origin: frontendOrigin,
   credentials: true,
 });
+
+const authenticate = async (request: FastifyRequest, _reply: FastifyReply) => {
+  await request.jwtVerify();
+};
 
 // Health check
 app.get("/health", async () => {
@@ -86,11 +95,11 @@ app.post("/auth/login", async (request, reply) => {
 // Protected route example
 app.get<{ Reply: { message: string; userId: string } }>(
   "/auth/me",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request) => {
     return {
       message: "Authenticated",
-      userId: request.user.id,
+      userId: getRequestUser(request).id,
     };
   },
 );
@@ -100,7 +109,7 @@ app.get<{ Reply: { message: string; userId: string } }>(
 // Start a new training session
 app.post(
   "/sessions/start",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const body = z
@@ -111,7 +120,7 @@ app.post(
         .parse(request.body);
 
       const session = await startSession(
-        request.user.id,
+        getRequestUser(request).id,
         body.module as Module,
         body.level,
       );
@@ -135,7 +144,7 @@ app.post(
 // Get next task
 app.post(
   "/tasks/next",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const body = z
@@ -166,7 +175,7 @@ app.post(
 // Submit an answer
 app.post(
   "/answers/submit",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const body = z
@@ -181,7 +190,7 @@ app.post(
         .parse(request.body);
 
       const result = await saveAnswer(
-        request.user.id,
+        getRequestUser(request).id,
         body.sessionId,
         body.taskId,
         body.userAnswer,
@@ -209,7 +218,7 @@ app.post(
 // End a training session
 app.post(
   "/sessions/end",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const body = z
@@ -222,7 +231,7 @@ app.post(
         .parse(request.body);
 
       const stats = await endSession(
-        request.user.id,
+        getRequestUser(request).id,
         body.sessionId,
         body.correctAnswers,
         body.totalTasks,
@@ -248,7 +257,7 @@ app.post(
 // Get module progress
 app.get(
   "/modules/progress/:module",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const params = z
@@ -258,7 +267,7 @@ app.get(
         .parse(request.params);
 
       const progress = await getModuleProgress(
-        request.user.id,
+        getRequestUser(request).id,
         params.module as Module,
       );
 
@@ -275,7 +284,7 @@ app.get(
 // Get session statistics
 app.get(
   "/sessions/:sessionId/stats",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const params = z
@@ -301,7 +310,7 @@ app.get(
 // Validate an algebra expression
 app.post(
   "/validate/expression",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const body = z
@@ -311,7 +320,7 @@ app.post(
         })
         .parse(request.body);
 
-      const { validateExpression } = await import("./validator.ts");
+      const { validateExpression } = await import("./validator.js");
       const result = await validateExpression(body.expression, body.variables);
 
       reply.send(result);
@@ -333,7 +342,7 @@ app.post(
 // Validate an algebra equation
 app.post(
   "/validate/equation",
-  { onRequest: [app.authenticate] },
+  { onRequest: [authenticate] },
   async (request, reply) => {
     try {
       const body = z
@@ -344,7 +353,7 @@ app.post(
         })
         .parse(request.body);
 
-      const { validateEquation } = await import("./validator.ts");
+      const { validateEquation } = await import("./validator.js");
       const result = await validateEquation(
         body.left,
         body.right,

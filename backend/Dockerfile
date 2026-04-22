@@ -1,6 +1,10 @@
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /app
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends openssl \
+	&& rm -rf /var/lib/apt/lists/*
 
 COPY backend/package*.json ./backend/
 COPY package*.json ./
@@ -16,4 +20,4 @@ RUN npm run prisma:generate
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["sh", "-c", "npm run prisma:push && npm run dev"]

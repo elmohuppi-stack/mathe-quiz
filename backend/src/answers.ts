@@ -1,7 +1,7 @@
-import prisma from "./db.ts";
-import { validateAnswer } from "./tasks.ts";
-import { validateEquation, validateExpression } from "./validator.ts";
-import type { Module } from "./tasks.ts";
+import prisma from "./db.js";
+import { validateAnswer } from "./tasks.js";
+import { validateEquation, validateExpression } from "./validator.js";
+import type { Module } from "./tasks.js";
 
 export interface AnswerSubmission {
   sessionId: string;

@@ -1,5 +1,5 @@
-import prisma from "./db.ts";
-import { Module } from "./tasks.ts";
+import prisma from "./db.js";
+import { Module } from "./tasks.js";
 
 export interface SessionData {
   id?: string;
@@ -60,6 +60,20 @@ export async function endSession(
     },
   });
 
+  const existingProgress = await prisma.moduleProgress.findUnique({
+    where: {
+      userId_module: {
+        userId,
+        module: session.module,
+      },
+    },
+  });
+
+  const nextAccuracy = Math.max(
+    existingProgress?.accuracy ?? 0,
+    session.accuracy ?? 0,
+  );
+
   // Update ModuleProgress
   const moduleProgress = await prisma.moduleProgress.upsert({
     where: {
@@ -72,14 +86,11 @@ export async function endSession(
       userId,
       module: session.module,
       level: 1,
-      accuracy: session.accuracy || 0,
+      accuracy: nextAccuracy,
       totalAnswers: totalTasks,
     },
     update: {
-      accuracy:
-        (session.accuracy || 0) > (this as any).accuracy
-          ? session.accuracy || 0
-          : (this as any).accuracy,
+      accuracy: nextAccuracy,
       totalAnswers: { increment: totalTasks },
     },
   });

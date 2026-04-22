@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { z } from "zod";
-import prisma from "./db.ts";
+import prisma from "./db.js";
 
 /**
  * Custom error for app-specific errors with i18n support
