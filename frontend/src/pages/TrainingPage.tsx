@@ -23,6 +23,7 @@ export default function TrainingPage() {
   const { module } = useParams<{ module: Module }>();
 
   const [session, setSession] = useState<SessionData | null>(null);
+  const [level] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
