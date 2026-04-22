@@ -47,17 +47,13 @@ app.post("/auth/register", async (request, reply) => {
     if (error instanceof AppError) {
       reply.status(400).send({ error: t(error.errorKey, error.message) });
     } else if (error instanceof z.ZodError) {
-      reply
-        .status(400)
-        .send({
-          error: t("errors.validation.required_field", "Validation failed"),
-        });
+      reply.status(400).send({
+        error: t("errors.validation.required_field", "Validation failed"),
+      });
     } else {
-      reply
-        .status(400)
-        .send({
-          error: t("errors.general.internal_error", (error as Error).message),
-        });
+      reply.status(400).send({
+        error: t("errors.general.internal_error", (error as Error).message),
+      });
     }
   }
 });
@@ -76,17 +72,13 @@ app.post("/auth/login", async (request, reply) => {
     if (error instanceof AppError) {
       reply.status(401).send({ error: t(error.errorKey, error.message) });
     } else if (error instanceof z.ZodError) {
-      reply
-        .status(400)
-        .send({
-          error: t("errors.validation.required_field", "Validation failed"),
-        });
+      reply.status(400).send({
+        error: t("errors.validation.required_field", "Validation failed"),
+      });
     } else {
-      reply
-        .status(401)
-        .send({
-          error: t("errors.general.internal_error", (error as Error).message),
-        });
+      reply.status(401).send({
+        error: t("errors.general.internal_error", (error as Error).message),
+      });
     }
   }
 });
@@ -121,30 +113,23 @@ app.post(
       const session = await startSession(
         request.user.id,
         body.module as Module,
-        body.level
+        body.level,
       );
 
       reply.send(session);
     } catch (error) {
       const t = getTranslatorFromRequest(request);
       if (error instanceof z.ZodError) {
-        reply
-          .status(400)
-          .send({
-            error: t("errors.validation.required_field", "Validation failed"),
-          });
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
       } else {
-        reply
-          .status(500)
-          .send({
-            error: t(
-              "errors.general.internal_error",
-              (error as Error).message
-            ),
-          });
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
       }
     }
-  }
+  },
 );
 
 // Get next task
@@ -166,23 +151,16 @@ app.post(
     } catch (error) {
       const t = getTranslatorFromRequest(request);
       if (error instanceof z.ZodError) {
-        reply
-          .status(400)
-          .send({
-            error: t("errors.validation.required_field", "Validation failed"),
-          });
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
       } else {
-        reply
-          .status(500)
-          .send({
-            error: t(
-              "errors.general.internal_error",
-              (error as Error).message
-            ),
-          });
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
       }
     }
-  }
+  },
 );
 
 // Submit an answer
@@ -198,6 +176,7 @@ app.post(
           userAnswer: z.string(),
           correctAnswer: z.string(),
           timeTakenMs: z.number().min(0),
+          module: z.enum(["mental-math", "fractions", "algebra"]),
         })
         .parse(request.body);
 
@@ -207,30 +186,24 @@ app.post(
         body.taskId,
         body.userAnswer,
         body.correctAnswer,
-        body.timeTakenMs
+        body.timeTakenMs,
+        body.module as Module,
       );
 
       reply.send(result);
     } catch (error) {
       const t = getTranslatorFromRequest(request);
       if (error instanceof z.ZodError) {
-        reply
-          .status(400)
-          .send({
-            error: t("errors.validation.required_field", "Validation failed"),
-          });
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
       } else {
-        reply
-          .status(500)
-          .send({
-            error: t(
-              "errors.general.internal_error",
-              (error as Error).message
-            ),
-          });
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
       }
     }
-  }
+  },
 );
 
 // End a training session
@@ -253,30 +226,23 @@ app.post(
         body.sessionId,
         body.correctAnswers,
         body.totalTasks,
-        body.avgTimeMs
+        body.avgTimeMs,
       );
 
       reply.send(stats);
     } catch (error) {
       const t = getTranslatorFromRequest(request);
       if (error instanceof z.ZodError) {
-        reply
-          .status(400)
-          .send({
-            error: t("errors.validation.required_field", "Validation failed"),
-          });
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
       } else {
-        reply
-          .status(500)
-          .send({
-            error: t(
-              "errors.general.internal_error",
-              (error as Error).message
-            ),
-          });
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
       }
     }
-  }
+  },
 );
 
 // Get module progress
@@ -293,19 +259,17 @@ app.get(
 
       const progress = await getModuleProgress(
         request.user.id,
-        params.module as Module
+        params.module as Module,
       );
 
       reply.send(progress);
     } catch (error) {
       const t = getTranslatorFromRequest(request);
-      reply
-        .status(500)
-        .send({
-          error: t("errors.general.internal_error", (error as Error).message),
-        });
+      reply.status(500).send({
+        error: t("errors.general.internal_error", (error as Error).message),
+      });
     }
-  }
+  },
 );
 
 // Get session statistics
@@ -325,13 +289,78 @@ app.get(
       reply.send(stats);
     } catch (error) {
       const t = getTranslatorFromRequest(request);
-      reply
-        .status(500)
-        .send({
+      reply.status(500).send({
+        error: t("errors.general.internal_error", (error as Error).message),
+      });
+    }
+  },
+);
+
+// ==================== Algebra Validation Routes ====================
+
+// Validate an algebra expression
+app.post(
+  "/validate/expression",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const body = z
+        .object({
+          expression: z.string(),
+          variables: z.array(z.string()).default(["x"]),
+        })
+        .parse(request.body);
+
+      const { validateExpression } = await import("./validator.ts");
+      const result = await validateExpression(body.expression, body.variables);
+
+      reply.send(result);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
+      } else {
+        reply.status(500).send({
           error: t("errors.general.internal_error", (error as Error).message),
         });
+      }
     }
-  }
+  },
+);
+
+// Validate an algebra equation
+app.post(
+  "/validate/equation",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const body = z
+        .object({
+          left: z.string(),
+          right: z.string(),
+          variables: z.array(z.string()).default(["x"]),
+        })
+        .parse(request.body);
+
+      const { validateEquation } = await import("./validator.ts");
+      const result = await validateEquation(body.left, body.right, body.variables);
+
+      reply.send(result);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
+      } else {
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+      }
+    }
+  },
 );
 
 // ==================== End Training Routes ====================

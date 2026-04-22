@@ -20,7 +20,7 @@ export interface SessionData {
 export async function startSession(
   userId: string,
   module: Module,
-  level: number
+  level: number,
 ) {
   const session = await prisma.session.create({
     data: {
@@ -49,7 +49,7 @@ export async function endSession(
   sessionId: string,
   correctAnswers: number,
   totalTasks: number,
-  avgTimeMs: number
+  avgTimeMs: number,
 ) {
   const session = await prisma.session.update({
     where: { id: sessionId },
@@ -76,9 +76,10 @@ export async function endSession(
       totalAnswers: totalTasks,
     },
     update: {
-      accuracy: (session.accuracy || 0) > (this as any).accuracy 
-        ? (session.accuracy || 0) 
-        : (this as any).accuracy,
+      accuracy:
+        (session.accuracy || 0) > (this as any).accuracy
+          ? session.accuracy || 0
+          : (this as any).accuracy,
       totalAnswers: { increment: totalTasks },
     },
   });
@@ -136,7 +137,7 @@ export async function updateLevelIfNeeded(
   userId: string,
   module: Module,
   currentLevel: number,
-  accuracy: number
+  accuracy: number,
 ) {
   // If accuracy > 80%, suggest next level
   if (accuracy > 80 && currentLevel < 5) {
@@ -146,6 +147,6 @@ export async function updateLevelIfNeeded(
   else if (accuracy < 50 && currentLevel > 1) {
     return currentLevel - 1;
   }
-  
+
   return currentLevel;
 }

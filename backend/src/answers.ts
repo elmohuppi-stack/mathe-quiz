@@ -1,5 +1,7 @@
 import prisma from "./db.ts";
 import { validateAnswer } from "./tasks.ts";
+import { validateEquation, validateExpression } from "./validator.ts";
+import type { Module } from "./tasks.ts";
 
 export interface AnswerSubmission {
   sessionId: string;
@@ -19,9 +21,25 @@ export async function saveAnswer(
   taskId: string,
   userAnswer: string,
   correctAnswer: string,
-  timeTakenMs: number
+  timeTakenMs: number,
+  module: Module = "mental-math"
 ): Promise<AnswerSubmission> {
-  const isCorrect = validateAnswer(userAnswer, correctAnswer);
+  let isCorrect = false;
+
+  // Use validator service for algebra module
+  if (module === "algebra") {
+    try {
+      // For algebra, we expect answers in format "x = value"
+      // Parse and validate using SymPy
+      const result = await validateEquation(userAnswer, correctAnswer, ["x"]);
+      isCorrect = result.are_equivalent;
+    } catch (error) {
+      // Fallback to simple string comparison
+      isCorrect = validateAnswer(userAnswer, correctAnswer);
+    }
+  } else {
+    isCorrect = validateAnswer(userAnswer, correctAnswer);
+  }
 
   // Save to database
   await prisma.answer.create({
@@ -65,8 +83,9 @@ function categorizeError(userAnswer: string, correctAnswer: string): string {
   }
 
   // Check if it's a format error
-  if (normalized.replace(/[\/\-\+\*]/g, "") === 
-      correct.replace(/[\/\-\+\*]/g, "")) {
+  if (
+    normalized.replace(/[\/\-\+\*]/g, "") === correct.replace(/[\/\-\+\*]/g, "")
+  ) {
     return "format-error";
   }
 
@@ -82,9 +101,10 @@ export async function getSessionStats(sessionId: string) {
   });
 
   const correctCount = answers.filter((a) => a.isCorrect).length;
-  const avgTime = answers.length > 0 
-    ? answers.reduce((sum, a) => sum + a.timeTaken, 0) / answers.length 
-    : 0;
+  const avgTime =
+    answers.length > 0
+      ? answers.reduce((sum, a) => sum + a.timeTaken, 0) / answers.length
+      : 0;
 
   return {
     totalAnswers: answers.length,
@@ -99,7 +119,7 @@ export async function getSessionStats(sessionId: string) {
  * Group errors by type
  */
 function groupErrors(
-  answers: Array<{ isCorrect: boolean; errorType: string | null }>
+  answers: Array<{ isCorrect: boolean; errorType: string | null }>,
 ) {
   const errorGroups: Record<string, number> = {};
 
@@ -119,7 +139,7 @@ function groupErrors(
 export async function getUserAnswerHistory(
   userId: string,
   module: string,
-  limit = 50
+  limit = 50,
 ) {
   const answers = await prisma.answer.findMany({
     where: {

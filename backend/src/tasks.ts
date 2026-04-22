@@ -16,9 +16,9 @@ export interface Task {
  */
 function generateMentalMathTask(level: number): Task {
   const taskId = `mental-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   let a: number, b: number, operation: "+" | "-" | "*" | "/";
-  
+
   if (level <= 2) {
     a = Math.floor(Math.random() * 10) + 1;
     b = Math.floor(Math.random() * 10) + 1;
@@ -209,16 +209,13 @@ export function generateTask(module: Module, level: number): Task {
  * Validate an answer (simple string comparison for now)
  * More complex validation will be handled by validator service
  */
-export function validateAnswer(userAnswer: string, correctAnswer: string): boolean {
+export function validateAnswer(
+  userAnswer: string,
+  correctAnswer: string,
+): boolean {
   // Normalize answers: trim whitespace, remove spaces
-  const normalized = userAnswer
-    .trim()
-    .replace(/\s/g, "")
-    .toLowerCase();
-  const correct = correctAnswer
-    .trim()
-    .replace(/\s/g, "")
-    .toLowerCase();
+  const normalized = userAnswer.trim().replace(/\s/g, "").toLowerCase();
+  const correct = correctAnswer.trim().replace(/\s/g, "").toLowerCase();
 
   return normalized === correct;
 }
