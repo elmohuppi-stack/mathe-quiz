@@ -11,6 +11,12 @@
       "unauthorized": "Unauthorized: Please log in",
       "token_invalid": "Invalid or expired token"
     },
+    "training": {
+      "invalid_module": "Invalid module selected",
+      "invalid_level": "Invalid level (1-5)",
+      "session_not_found": "Training session not found",
+      "task_not_found": "Task not found"
+    },
     "general": {
       "internal_error": "Internal server error",
       "not_found": "Resource not found",
@@ -20,6 +26,9 @@
   "messages": {
     "registration_success": "Registration successful",
     "login_success": "Login successful",
-    "user_info": "User information retrieved successfully"
+    "user_info": "User information retrieved successfully",
+    "session_started": "Training session started",
+    "session_ended": "Training session ended",
+    "answer_submitted": "Answer submitted successfully"
   }
 }

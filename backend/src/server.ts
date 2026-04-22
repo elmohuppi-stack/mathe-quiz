@@ -4,6 +4,9 @@ import fastifyCors from "@fastify/cors";
 import { z } from "zod";
 import { registerUser, loginUser, AppError } from "./auth.ts";
 import { getTranslatorFromRequest } from "./i18n/useI18n.ts";
+import { generateTask, Module } from "./tasks.ts";
+import { startSession, endSession, getModuleProgress } from "./sessions.ts";
+import { saveAnswer, getSessionStats } from "./answers.ts";
 import prisma from "./db.ts";
 
 const port = parseInt(process.env.PORT || "3000");
@@ -99,6 +102,239 @@ app.get<{ Reply: { message: string; userId: string } }>(
     };
   },
 );
+
+// ==================== Training Routes ====================
+
+// Start a new training session
+app.post(
+  "/sessions/start",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const body = z
+        .object({
+          module: z.enum(["mental-math", "fractions", "algebra"]),
+          level: z.number().int().min(1).max(5).default(1),
+        })
+        .parse(request.body);
+
+      const session = await startSession(
+        request.user.id,
+        body.module as Module,
+        body.level
+      );
+
+      reply.send(session);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply
+          .status(400)
+          .send({
+            error: t("errors.validation.required_field", "Validation failed"),
+          });
+      } else {
+        reply
+          .status(500)
+          .send({
+            error: t(
+              "errors.general.internal_error",
+              (error as Error).message
+            ),
+          });
+      }
+    }
+  }
+);
+
+// Get next task
+app.post(
+  "/tasks/next",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const body = z
+        .object({
+          module: z.enum(["mental-math", "fractions", "algebra"]),
+          level: z.number().int().min(1).max(5).default(1),
+        })
+        .parse(request.body);
+
+      const task = generateTask(body.module as Module, body.level);
+
+      reply.send(task);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply
+          .status(400)
+          .send({
+            error: t("errors.validation.required_field", "Validation failed"),
+          });
+      } else {
+        reply
+          .status(500)
+          .send({
+            error: t(
+              "errors.general.internal_error",
+              (error as Error).message
+            ),
+          });
+      }
+    }
+  }
+);
+
+// Submit an answer
+app.post(
+  "/answers/submit",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const body = z
+        .object({
+          sessionId: z.string(),
+          taskId: z.string(),
+          userAnswer: z.string(),
+          correctAnswer: z.string(),
+          timeTakenMs: z.number().min(0),
+        })
+        .parse(request.body);
+
+      const result = await saveAnswer(
+        request.user.id,
+        body.sessionId,
+        body.taskId,
+        body.userAnswer,
+        body.correctAnswer,
+        body.timeTakenMs
+      );
+
+      reply.send(result);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply
+          .status(400)
+          .send({
+            error: t("errors.validation.required_field", "Validation failed"),
+          });
+      } else {
+        reply
+          .status(500)
+          .send({
+            error: t(
+              "errors.general.internal_error",
+              (error as Error).message
+            ),
+          });
+      }
+    }
+  }
+);
+
+// End a training session
+app.post(
+  "/sessions/end",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const body = z
+        .object({
+          sessionId: z.string(),
+          correctAnswers: z.number().int().min(0),
+          totalTasks: z.number().int().min(1),
+          avgTimeMs: z.number().min(0),
+        })
+        .parse(request.body);
+
+      const stats = await endSession(
+        request.user.id,
+        body.sessionId,
+        body.correctAnswers,
+        body.totalTasks,
+        body.avgTimeMs
+      );
+
+      reply.send(stats);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply
+          .status(400)
+          .send({
+            error: t("errors.validation.required_field", "Validation failed"),
+          });
+      } else {
+        reply
+          .status(500)
+          .send({
+            error: t(
+              "errors.general.internal_error",
+              (error as Error).message
+            ),
+          });
+      }
+    }
+  }
+);
+
+// Get module progress
+app.get(
+  "/modules/progress/:module",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const params = z
+        .object({
+          module: z.enum(["mental-math", "fractions", "algebra"]),
+        })
+        .parse(request.params);
+
+      const progress = await getModuleProgress(
+        request.user.id,
+        params.module as Module
+      );
+
+      reply.send(progress);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      reply
+        .status(500)
+        .send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+    }
+  }
+);
+
+// Get session statistics
+app.get(
+  "/sessions/:sessionId/stats",
+  { onRequest: [app.authenticate] },
+  async (request, reply) => {
+    try {
+      const params = z
+        .object({
+          sessionId: z.string(),
+        })
+        .parse(request.params);
+
+      const stats = await getSessionStats(params.sessionId);
+
+      reply.send(stats);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      reply
+        .status(500)
+        .send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+    }
+  }
+);
+
+// ==================== End Training Routes ====================
 
 // Graceful shutdown
 const gracefulShutdown = async () => {
