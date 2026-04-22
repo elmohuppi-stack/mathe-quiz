@@ -5,6 +5,7 @@ import { useLanguageStore } from "./i18n/useTranslation";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import TrainingPage from "./pages/TrainingPage";
 import "./index.css";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,14 @@ function App() {
           element={
             <PrivateRoute>
               <DashboardPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/training/:module"
+          element={
+            <PrivateRoute>
+              <TrainingPage />
             </PrivateRoute>
           }
         />
