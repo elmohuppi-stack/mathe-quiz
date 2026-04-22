@@ -12,28 +12,15 @@ const translations = {
 interface LanguageStore {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
   loadFromStorage: () => void;
 }
 
-export const useLanguageStore = create<LanguageStore>((set, get) => ({
+export const useLanguageStore = create<LanguageStore>((set) => ({
   language: "en",
 
   setLanguage: (lang: Language) => {
     localStorage.setItem("language", lang);
     set({ language: lang });
-  },
-
-  t: (key: string) => {
-    const state = get();
-    const keys = key.split(".");
-    let value: any = translations[state.language];
-
-    for (const k of keys) {
-      value = value?.[k];
-    }
-
-    return value || key;
   },
 
   loadFromStorage: () => {
@@ -51,9 +38,20 @@ export const useLanguageStore = create<LanguageStore>((set, get) => ({
 }));
 
 export function useTranslation() {
-  // Subscribe to language changes to trigger re-renders on language switch
+  // Subscribe to language changes
   const language = useLanguageStore((state) => state.language);
-  // Get the t function from store (which uses the current language via get())
-  const t = useLanguageStore((state) => state.t);
+
+  // Return a t function that uses the current language
+  const t = (key: string): string => {
+    const keys = key.split(".");
+    let value: any = translations[language];
+
+    for (const k of keys) {
+      value = value?.[k];
+    }
+
+    return value || key;
+  };
+
   return { t };
 }
