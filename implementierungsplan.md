@@ -1,459 +1,545 @@
-# Plan: Mathe-Quiz Webanwendung - Responsive + Hetzner Deployment
+# Implementierungsplan: Mathe-Quiz Webanwendung
 
-## TL;DR
+## 1. Zielbild
 
-Responsive Webanwendung (React + Node.js TypeScript) für adaptives Mathe-Training mit SymPy-Integration. Deployment auf bestehendem Hetzner-Server mit Multi-App-Setup. 8+ Wochen mit perfektionistischem Ansatz.
+Es entsteht eine responsive Webanwendung fuer mathematisches Training mit drei Produktzielen:
 
-**Tech-Stack**: React 18 (Frontend) | Node.js + TypeScript (Backend) | PostgreSQL + Redis | Docker | Hetzner VPS
+- schnelle, fokussierte Trainingssessions
+- didaktisch sauberes Feedback
+- messbarer Lernfortschritt pro Modul
 
----
+Die Architektur wird bewusst einfach gehalten:
 
-## Projektparameter
-
-- **Frontend-Domain**: `mathe-quiz.elmarhepp.de`
-- **API-Domain**: `mathe-quiz-api.elmarhepp.de`
-- **WEB_PORT**: 3031
-- **API_PORT**: 3032
-- **DEPLOY_PATH**: `/var/www/mathe-quiz`
-- **Backend**: Node.js + Express/Fastify + TypeScript
-- **Auth**: Email/Passwort + Profil + Statistiken + Fortschritts-Export
-- **Timeline**: 8+ Wochen
+- React im Frontend
+- Node.js mit TypeScript als Haupt-API
+- SymPy nur fuer die algebraische Validierung, angebunden ueber einen internen Python-Service
+- PostgreSQL als primaere Datenbank
+- Deployment auf dem bestehenden Hetzner-Multi-App-Server
 
 ---
 
-# Phase-Übersicht
+## 2. Verbindliche Architekturentscheidungen
 
-## 1. Tech-Stack (Detailliert)
+| Bereich             | Entscheidung                                | Begruendung                                                      |
+| ------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
+| Frontend            | React + TypeScript + Vite                   | schnell, komponentenbasiert, mobile und Desktop gut abbildbar    |
+| UI-Styling          | Tailwind CSS                                | schnelle Iteration, gute Responsive-Grundlage                    |
+| API-Backend         | Node.js + TypeScript mit Fastify            | einheitliche Hauptsprache, guter Durchsatz, einfache Typisierung |
+| Algebra-Validierung | interner Python-Service mit FastAPI + SymPy | SymPy ist fuer symbolische Algebra die robusteste Option         |
+| Datenbank           | PostgreSQL                                  | stabile relationale Basis fuer Nutzer, Sessions und Metriken     |
+| Cache/Queue         | zunaechst ohne Redis, spaeter optional      | MVP erst mit moeglichst wenig Infrastruktur bewegen              |
+| Deployment          | Docker Compose + Host-Nginx auf Hetzner     | passt exakt zu deinem Multi-App-Standard                         |
 
-### Frontend
+### 2.1 Architekturprinzip
 
-- **Framework**: React 18 + TypeScript
-  - Warum: Responsive UX, große Community, beste DevTools, Performance
-  - State Management: Zustand (klein, schnell, für diese Komplexität ausreichend)
-  - UI Components: Shadcn/ui (unstyled, schnell customisierbar)
-  - Styling: Tailwind CSS (responsive by default)
-  - Build: Vite (schneller als Create React App)
+Node.js ist das fuehrende Backend. Der Python-Service ist kein zweites Produkt-Backend, sondern ausschliesslich eine interne Fachkomponente fuer Algebra.
 
-### Backend
+### 2.2 Was explizit nicht mehr Teil des Plans ist
 
-- **Framework**: Python FastAPI
-  - Warum: Schnell, async-native, SymPy Integration einfach, moderne Type Hints
-  - Async Engine: Uvicorn (ASGI Server)
-  - ORM: SQLAlchemy 2.0 (async support)
-  - Parser & Math: SymPy (Anforderung erfüllt)
+Diese Optionen werden nicht weiter verfolgt:
 
-  Alternative: Node.js + Express + TS (wenn du TypeScript-Only bevorzugst)
-
-### Datenbank
-
-- **Primary**: PostgreSQL (relational, zuverlässig)
-- **Cache**: Redis (optional, für Session Tracking & Spaced Repetition)
-
-### DevOps / Deployment
-
-- **Containerisierung**: Docker + Docker Compose
-- **Hosting**: Hetzner Cloud (VPS oder App Platform)
-- **Reverse Proxy**: Nginx
-- **CI/CD**: GitHub Actions (free, Hetzner-Deployment)
-- **Monitoring**: Sentry (Fehlertracking)
+- reines Python-Hauptbackend
+- SQLAlchemy als primaere ORM-Schicht
+- Alembic-Migrationen
+- Pydantic als API-Standard fuer das Hauptbackend
+- app-internes oeffentliches Nginx auf Port 80 oder 443
 
 ---
 
-## 2. Projektstruktur
+## 3. Produktreihenfolge
 
+Der MVP bleibt fachlich bei drei Modulen, aber technisch wird das Risiko gestaffelt umgesetzt.
+
+### 3.1 Technischer MVP
+
+Zuerst wird Algebra Ende-zu-Ende gebaut, weil dort Parser, Schrittvalidierung und Fehlerklassifikation am schwierigsten sind.
+
+### 3.2 Produkt-MVP
+
+Sobald Algebra stabil laeuft, werden Kopfrechnen und Brueche auf derselben Plattform ergaenzt. Dadurch bleibt die Architektur einheitlich und die schwerste Domaenenlogik wird zuerst geloest.
+
+---
+
+## 4. Ziel-Scope des MVP
+
+Zum MVP-Release muessen vorhanden sein:
+
+- Login und Benutzerkonto
+- Trainingsoberflaeche fuer Mobile und Desktop
+- Algebra vollstaendig
+- Kopfrechnen als direktes Antwortmodul
+- Brueche & Prozent als direktes Antwortmodul
+- adaptives Basis-Leveling
+- Session-Feedback
+- Dashboard mit Kernmetriken
+- Impressum und Datenschutzerklaerung
+- Deployment auf Hetzner unter eigener Frontend- und API-Subdomain
+
+Nicht Bestandteil des MVP:
+
+- Lehrer- oder Klassenraumfunktionen
+- Mehrmandantenfaehigkeit
+- komplexe Echtzeitfunktionen
+- Offline-First
+- Gamification-Mechaniken als Kernsystem
+
+### 4.1 Rechtlicher Mindestumfang zum Livegang
+
+Vor dem produktiven Livegang in Deutschland muessen mindestens umgesetzt sein:
+
+- Impressum als eigene Seite
+- Datenschutzerklaerung als eigene Seite
+- Footer-Links auf beide Seiten
+- datensparsame Standardkonfiguration ohne nicht notwendige Tracker
+- dokumentierte Liste eingesetzter Dienstleister
+- Loesch- und Exportprozess fuer Benutzerdaten
+
+---
+
+## 5. Projektparameter
+
+| Parameter       | Wert                          |
+| --------------- | ----------------------------- |
+| APP_SLUG        | `mathe-quiz`                  |
+| FRONTEND_DOMAIN | `mathe-quiz.elmarhepp.de`     |
+| API_DOMAIN      | `mathe-quiz-api.elmarhepp.de` |
+| WEB_PORT        | `3031`                        |
+| API_PORT        | `3032`                        |
+| DEPLOY_PATH     | `/var/www/mathe-quiz`         |
+
+Wenn du spaeter eine kuerzere Domain wie `quiz.elmarhepp.de` moechtest, darf sich nur diese Parametertabelle aendern. Der Rest des Plans bleibt gleich.
+
+---
+
+## 6. Zielarchitektur
+
+```text
+Browser
+  -> React Frontend
+  -> Host-Nginx auf Hetzner
+  -> Fastify API (Node.js)
+      -> PostgreSQL
+      -> interner Validator-Service (FastAPI + SymPy)
 ```
+
+### 6.1 Verantwortlichkeiten
+
+#### Frontend
+
+- Darstellung von Aufgaben
+- Eingabe und Session-Fluss
+- sofortiges UI-Feedback auf Basis der API-Antwort
+- Dashboard und Verlaufsansichten
+
+#### Node.js API
+
+- Authentifizierung
+- Session-Steuerung
+- Aufgaben-Generierung
+- Antwortspeicherung
+- Metriken und Schwierigkeitsanpassung
+- Ansteuerung des Algebra-Validator-Service
+
+#### Python-Validator-Service
+
+- Parsing algebraischer Eingaben
+- Aequivalenzpruefung
+- regelbasierte Schrittvalidierung
+- Rueckgabe strukturierter Fehlercodes
+
+Der Python-Service ist nur intern im Compose-Netzwerk erreichbar und bekommt keine eigene oeffentliche Domain.
+
+---
+
+## 7. Repository-Struktur
+
+```text
 mathe-quiz/
-├── frontend/                    # React + Vite
+├── frontend/
 │   ├── src/
+│   │   ├── app/
 │   │   ├── components/
-│   │   │   ├── QuestionView.tsx       # Aufgabe anzeigen
-│   │   │   ├── AnswerInput.tsx        # Input-Feld
-│   │   │   ├── FeedbackDisplay.tsx    # Feedback nach Antwort
-│   │   │   └── SessionSummary.tsx     # Session-Zusammenfassung
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx          # Übersicht + Module wählen
-│   │   │   ├── Training.tsx           # Haupttraining
-│   │   │   ├── Statistics.tsx         # Metriken & Fortschritt
-│   │   │   └── Settings.tsx           # Benutzer-Einstellungen
-│   │   ├── hooks/
-│   │   │   ├── useTraining.ts         # Training-Logik
-│   │   │   └── useAuth.ts             # Auth-Management
-│   │   ├── services/
-│   │   │   └── api.ts                 # API-Calls
-│   │   ├── store/
-│   │   │   └── trainingStore.ts       # Zustand State
-│   │   └── App.tsx
-│   ├── public/
+│   │   ├── features/
+│   │   │   ├── auth/
+│   │   │   ├── training/
+│   │   │   ├── dashboard/
+│   │   │   └── settings/
+│   │   ├── lib/
+│   │   └── routes/
+│   ├── package.json
 │   └── vite.config.ts
-│
-├── backend/                     # Python FastAPI
-│   ├── app/
-│   │   ├── main.py                    # FastAPI App Entry
-│   │   ├── config.py                  # Config (DB, SymPy)
-│   │   ├── models/
-│   │   │   ├── user.py
-│   │   │   ├── task.py
-│   │   │   └── session.py
-│   │   ├── schemas/
-│   │   │   ├── request.py             # Pydantic Request Models
-│   │   │   └── response.py            # Response Models
-│   │   ├── routers/
-│   │   │   ├── auth.py                # Login/Register
-│   │   │   ├── tasks.py               # GET Task
-│   │   │   ├── submit.py              # POST Answer + Validation
-│   │   │   ├── stats.py               # GET Statistics
-│   │   │   └── modules.py             # Module Config
+├── backend/
+│   ├── src/
+│   │   ├── app.ts
+│   │   ├── server.ts
+│   │   ├── modules/
+│   │   │   ├── auth/
+│   │   │   ├── training/
+│   │   │   ├── stats/
+│   │   │   └── health/
 │   │   ├── services/
-│   │   │   ├── task_generator.py      # Task Generation
-│   │   │   ├── equation_validator.py  # SymPy Validation
-│   │   │   ├── difficulty_adapter.py  # Level Anpassung
-│   │   │   └── spaced_repetition.py   # Repetitions-Logik
+│   │   ├── clients/
+│   │   │   └── validatorClient.ts
 │   │   ├── db/
-│   │   │   ├── database.py            # SQLAlchemy Setup
-│   │   │   └── crud.py                # DB Operations
-│   │   └── utils/
-│   │       └── error_classifier.py    # Fehlertypen
+│   │   └── shared/
+│   ├── prisma/
+│   │   └── schema.prisma
+│   └── package.json
+├── validator/
+│   ├── app/
 │   ├── requirements.txt
-│   ├── Dockerfile
-│   └── .env.example
-│
-├── docker-compose.yml          # Local Development
-├── docker-compose.prod.yml     # Production
-├── nginx.conf                  # Reverse Proxy Config
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # CI/CD Pipeline
-└── README.md
+│   └── Dockerfile
+├── docker-compose.yml
+├── docker-compose.prod.yml
+└── .github/workflows/
 ```
 
 ---
 
-## 3. Architektur-Übersicht
+## 8. Datenmodell
 
+### 8.1 Kern-Tabellen
+
+| Tabelle         | Zweck                                           |
+| --------------- | ----------------------------------------------- |
+| users           | Benutzerkonto und Login                         |
+| user_profiles   | Profil, Praeferenzen, Trainingsziele            |
+| sessions        | Trainingssitzungen                              |
+| answers         | einzelne Antworten inklusive Zeit und Fehlertyp |
+| module_progress | aktueller Stand pro Modul                       |
+| task_patterns   | optionale Referenz auf Aufgabenmuster           |
+
+### 8.2 Minimales Prisma-Modell
+
+```text
+User 1---n Session
+User 1---n Answer
+User 1---n ModuleProgress
+Session 1---n Answer
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLIENT (Browser)                         │
-│  React App → Responsive UI, Real-time Feedback              │
-└──────────────┬──────────────────────────────────────────────┘
-               │ HTTPS
-┌──────────────▼──────────────────────────────────────────────┐
-│              NGINX (Reverse Proxy)                          │
-│  - SSL/TLS Termination                                      │
-│  - Load Balancing (optional)                                │
-│  - Static Files Serving                                     │
-└──────────────┬──────────────────────────────────────────────┘
-               │
-        ┌──────┴──────┐
-        │             │
-┌───────▼───┐  ┌──────▼────────────────────────────────┐
-│ React App │  │  FastAPI Backend (Uvicorn)           │
-│ Static    │  │  - GET /task/next                    │
-│ (dist/)   │  │  - POST /submit + Validation         │
-│           │  │  - GET /stats                        │
-└───────────┘  │  - Websocket (optional for realtime) │
-               └──────┬──────────────────────────────────┘
-                      │
-        ┌─────────────┼──────────────┐
-        │             │              │
-   ┌────▼──────┐ ┌────▼────┐  ┌─────▼──────┐
-   │ PostgreSQL│ │  Redis  │  │   SymPy    │
-   │ (User DB) │ │ (Cache) │  │  (Parser)  │
-   │ (Tasks)   │ │ (Replay)│  │ (Validator)│
-   │ (Sessions)│ └─────────┘  └────────────┘
-   └───────────┘
-```
+
+### 8.3 Warum kein separates Task-Archiv im MVP
+
+Generierte Aufgaben werden zunaechst als JSON-Snapshot an der Antwort gespeichert. Das reduziert Komplexitaet und reicht fuer Replays, Debugging und Statistiken aus.
 
 ---
 
-## 4. API-Endpoints (Backend)
+## 9. API-Schnittstellen
 
-### Authentication
+### 9.1 Auth
 
-- `POST /auth/register` → User erstellen
-- `POST /auth/login` → JWT Token
-- `POST /auth/refresh` → Token erneuern
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/logout`
 
-### Training
+### 9.2 Training
 
-- `GET /api/task/next?module=algebra&level=2` → Nächste Aufgabe
-- `POST /api/task/submit` → Antwort validieren
-  ```json
-  {
-    "task_id": "uuid",
-    "user_answer": "2x = 8",
-    "time_ms": 2300
-  }
-  ```
-- `GET /api/session/summary` → Session-Zusammenfassung
+- `POST /sessions/start`
+- `GET /tasks/next?module=algebra&mode=step`
+- `POST /answers/submit`
+- `POST /sessions/:id/end`
 
-### Statistiken
+### 9.3 Dashboard
 
-- `GET /api/stats/dashboard` → Übersicht (Genauigkeit, Zeit, Level)
-- `GET /api/stats/detail?module=algebra` → Detaillierte Metriken
+- `GET /stats/overview`
+- `GET /stats/module/:module`
+- `GET /stats/session/:sessionId`
+- `GET /profile`
+- `PATCH /profile`
 
-### Verwaltung
+### 9.4 Interne Schnittstelle zum Validator
 
-- `GET /api/modules` → Verfügbare Module + Current Level
-- `PATCH /api/settings` → Benutzer-Einstellungen
+- `POST /validate/expression`
+- `POST /validate/equation`
+- `POST /validate/step`
 
----
-
-## 5. Response-Beispiele
-
-### GET /api/task/next
+Beispielantwort des Validators:
 
 ```json
 {
-  "task_id": "550e8400-e29b-41d4-a716-446655440000",
-  "module": "algebra",
-  "type": "step_by_step",
-  "equation": "2x + 3 = 11",
-  "level": 2,
-  "current_step": 0,
-  "total_steps": 2,
-  "instruction": "Subtrahiere 3 von beiden Seiten"
-}
-```
-
-### POST /api/task/submit (Response)
-
-```json
-{
-  "task_id": "550e8400-e29b-41d4-a716-446655440000",
-  "correct": true,
-  "time_ms": 2300,
-  "feedback": {
-    "status": "correct",
-    "message": "Richtig! ✓",
-    "solution": "2x = 11 - 3 = 8",
-    "next_level": 2
-  }
+  "is_valid": false,
+  "is_equivalent": false,
+  "error_code": "SIGN_ERROR",
+  "message": "Beim Umformen wurde das Vorzeichen falsch behandelt.",
+  "normalized_input": "2*x = 14"
 }
 ```
 
 ---
 
-## 6. Deployment auf Hetzner
+## 10. Umsetzungsphasen
 
-### Option A: Docker on Hetzner Cloud VPS (Empfohlen für mehrere Apps)
+## Phase 1: Plattform und Grundgeruest
 
-**Setup:**
+### Inhalte
 
-1. VPS mieten (Ubuntu 22.04, 2-4 GB RAM)
-2. Docker + Docker Compose installieren
-3. Git Repo clonen
-4. Docker Compose hochfahren
-5. Nginx als Reverse Proxy vor mehreren Apps
+- Monorepo-Struktur anlegen
+- React-Frontend bootstrappen
+- Fastify-API bootstrappen
+- PostgreSQL anbinden
+- Prisma einrichten
+- Login und Registrierung bauen
+- Healthcheck-Endpunkt bauen
 
-**Dateistruktur auf Server:**
+### Ergebnis
 
-```
-/home/ubuntu/
-├── mathe-quiz/
-│   ├── docker-compose.prod.yml
-│   ├── .env (geheim!)
-│   └── nginx/
-│       └── mathe-quiz.conf
-├── andere-app-1/
-├── andere-app-2/
-└── nginx.conf (zentral für alle Apps)
-```
+Die Anwendung startet lokal vollstaendig, Nutzer koennen sich registrieren, und Backend plus Datenbank sind lauffaehig.
 
-**docker-compose.prod.yml:**
+### Exit-Kriterien
+
+- Frontend startet lokal
+- Backend startet lokal
+- Datenbankmigration laeuft durch
+- Login funktioniert
+- `GET /health` antwortet erfolgreich
+
+---
+
+## Phase 2: Algebra Ende-zu-Ende
+
+### Inhalte
+
+- internen Validator-Service mit SymPy aufsetzen
+- Node-Client zum Validator bauen
+- Algebra-Taskgenerator erstellen
+- Schritt-fuer-Schritt-Validierung implementieren
+- Fehlerklassifikation integrieren
+- Training-Ansicht fuer Algebra umsetzen
+
+### Ergebnis
+
+Ein Benutzer kann eine Algebra-Session vollstaendig absolvieren und erhaelt korrektes Feedback inklusive Fehlertyp.
+
+### Exit-Kriterien
+
+- Algebra-Aufgabe wird generiert
+- Benutzer kann naechsten Schritt eingeben
+- Validator bewertet Syntax, Aequivalenz und Regelkonsistenz
+- Session-Feedback funktioniert fuer Algebra
+
+---
+
+## Phase 3: Weitere Module und Basis-Adaption
+
+### Inhalte
+
+- Kopfrechnen-Modul ergaenzen
+- Brueche-&-Prozent-Modul ergaenzen
+- adaptive Logik auf Basis von Antwortzeit und Korrektheit einfuehren
+- Wiederholungslogik fuer Fehler und langsame Muster ergaenzen
+
+### Ergebnis
+
+Alle drei MVP-Module laufen auf derselben Plattform, und die Schwierigkeit reagiert auf das Verhalten des Benutzers.
+
+### Exit-Kriterien
+
+- drei Module sind im UI auswaehlbar
+- pro Modul wird Fortschritt gespeichert
+- falsche Aufgabenmuster werden erneut priorisiert
+- Levelwechsel sind nachvollziehbar
+
+---
+
+## Phase 4: Dashboard, Profil, Export
+
+### Inhalte
+
+- Dashboard mit Kernmetriken
+- Profilseite und Einstellungen
+- Session-Historie
+- einfacher CSV- oder JSON-Export
+- Benutzerprozess fuer Datenauskunft und Datenexport vorbereiten
+
+### Ergebnis
+
+Der Benutzer sieht seinen Fortschritt und kann seine Daten exportieren.
+
+### Exit-Kriterien
+
+- Uebersicht mit Genauigkeit und Antwortzeit vorhanden
+- Session-Details abrufbar
+- Profil editierbar
+- Export funktioniert
+- Benutzerkoennen ihre Kernprofildaten einsehen und exportieren
+
+---
+
+## Phase 5: Responsive UX und Hardening
+
+### Inhalte
+
+- mobile Eingabe ueberarbeiten
+- Layouts fuer Mobile, Tablet und Desktop finalisieren
+- Fehlerfaelle sauber behandeln
+- Ladezeiten und Interaktion optimieren
+- Tests fuer Kernpfade ergaenzen
+- Impressum und Datenschutzerklaerung als statische oder CMS-gestuetzte Seiten integrieren
+- Footer und Routing fuer Pflichtseiten ergänzen
+- Cookie- und Tracking-Konzept fuer den MVP festlegen
+
+### Ergebnis
+
+Die Anwendung ist stabil, gut bedienbar und fuer den ersten echten Einsatz geeignet.
+
+### Exit-Kriterien
+
+- Mobile-Layout ist ohne horizontales Scrollen nutzbar
+- Tastatur-Flow funktioniert in Trainingsansichten
+- kritische Flows sind automatisch getestet
+- keine Blocker in Login, Training, Dashboard
+- Impressum und Datenschutzerklaerung sind im UI erreichbar
+
+---
+
+## Phase 6: Hetzner-Deployment und Betrieb
+
+### Inhalte
+
+- Produktions-Compose nach Hetzner-Standard erstellen
+- Host-Nginx-Site konfigurieren
+- GitHub Actions Deployment einrichten
+- Healthchecks und Logs ueberpruefen
+- Hosting- und Drittanbieter-Dokumentation fuer Datenschutz vorbereiten
+- Logging auf Datensparsamkeit pruefen
+
+### Ergebnis
+
+Die App laeuft unter deinen Subdomains auf dem bestehenden Hetzner-Server.
+
+### Exit-Kriterien
+
+- Frontend unter `https://mathe-quiz.elmarhepp.de` erreichbar
+- API unter `https://mathe-quiz-api.elmarhepp.de/health` erreichbar
+- Deployment laeuft ohne manuelle Nacharbeit
+- Rollback ueber Git und Compose moeglich
+- rechtliche Pflichtseiten sind produktiv verlinkt
+
+---
+
+## 11. Hetzner-Deployment-Standard fuer dieses Projekt
+
+Fuer dieses Projekt gilt verbindlich der Standard aus der Deployment-Vorlage:
+
+- Deploy-Pfad: `/var/www/mathe-quiz`
+- zentraler Host-Nginx auf dem Server
+- App selbst belegt nicht Port 80 oder 443
+- Compose bindet nur an `127.0.0.1:3031` und `127.0.0.1:3032`
+- Validator-Service bleibt intern ohne oeffentliche Portfreigabe
+
+### 11.1 Erwartete Compose-Konvention
 
 ```yaml
-version: "3.8"
-
 services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: mathe_quiz
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+  api:
+    ports:
+      - "127.0.0.1:3032:3000"
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
+  web:
+    ports:
+      - "127.0.0.1:3031:3000"
 
-  backend:
-    build: ./backend
-    environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/mathe_quiz
-      REDIS_URL: redis://redis:6379/0
-      ENVIRONMENT: production
-    depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
+  validator:
     expose:
-      - "8000"
-
-  frontend:
-    build: ./frontend
-    expose:
-      - "3000"
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
+      - "8001"
 ```
 
-### Option B: Hetzner App Platform (Managed)
+### 11.2 CI/CD-Konvention
 
-**Vorteile:**
-
-- Auto-Scaling
-- SSL automatisch
-- Keine Server-Verwaltung
-
-**Nachteile:**
-
-- Teurer
-- Weniger Kontrolle
-
-Empfehlung: **Option A** (VPS), da du bereits mehrere Apps hast → Kosteneffizienter
-
----
-
-## 7. CI/CD (GitHub Actions → Hetzner Deployment)
-
-**.github/workflows/deploy.yml:**
-
-```yaml
-name: Deploy to Hetzner
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: SSH Deploy
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: ${{ secrets.HETZNER_USER }}
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          script: |
-            cd ~/mathe-quiz
-            git pull origin main
-            docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml up -d --build
-            docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
-```
-
----
-
-## 8. Lokale Entwicklung
-
-**Setup (First Time):**
+Deployment-Zielpfad in GitHub Actions:
 
 ```bash
-# Clone
-git clone ...
-cd mathe-quiz
-
-# Frontend
-cd frontend
-npm install
-npm run dev  # http://localhost:5173
-
-# Backend (neues Terminal)
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload  # http://localhost:8000
-
-# Docker (optional)
-docker-compose up -d  # PostgreSQL + Redis lokal
+cd /var/www/mathe-quiz
+git pull origin main
+docker compose up -d --build
+docker compose exec api npx prisma migrate deploy
 ```
 
 ---
 
-## 9. Performance & Security Checklist
+## 12. Lokale Entwicklung
 
-### Performance
+### 12.1 Empfohlener lokaler Workflow
 
-- [ ] Frontend: Gzip Compression (Nginx)
-- [ ] Backend: Response Caching (Redis)
-- [ ] Database: Indexing auf häufig abgefragten Spalten
-- [ ] SymPy: Caching von Parse-Ergebnissen
-- [ ] Lazy Loading: Statistiken nur bei Bedarf laden
+```bash
+# Terminal 1
+cd frontend
+npm install
+npm run dev
 
-### Security
+# Terminal 2
+cd backend
+npm install
+npm run dev
 
-- [ ] HTTPS/SSL (Let's Encrypt automatisch bei Hetzner)
-- [ ] JWT Auth (Tokens mit Expiration)
-- [ ] CORS Config (nur Frontend-Domain erlauben)
-- [ ] Rate Limiting (max 10 requests/min per IP)
-- [ ] SQL Injection Prevention (SQLAlchemy parametrized queries)
-- [ ] Input Validation (Pydantic Schemas)
-- [ ] Secrets in .env (nie in Git)
+# Terminal 3
+cd validator
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8001
+```
 
----
+### 12.2 Alternativ per Docker Compose
 
-## 10. Kosten-Schätzung (Hetzner)
-
-| Item           | Preis/Monat | Notizen                   |
-| -------------- | ----------- | ------------------------- |
-| VPS (2 GB RAM) | €4-5        | Teilst mit anderen Apps   |
-| Domain         | €0-1        | Je nach Registry          |
-| SSL            | €0          | Let's Encrypt (kostenlos) |
-| **Total**      | **€5-6**    | Sehr günstig!             |
+Lokales Compose ist erlaubt, aber kein Muss. Fuer reine Frontend- oder API-Arbeit soll der direkte Dev-Workflow bevorzugt werden.
 
 ---
 
-## 11. Nächste Schritte (Roadmap)
+## 13. Qualitaets- und Sicherheitsanforderungen
 
-### Phase 1: MVP (Woche 1-2)
+### 13.1 Qualitaet
 
-- [ ] Backend: Task Generator + SymPy Validator
-- [ ] Frontend: QuestionView + AnswerInput
-- [ ] Database: User + Task Models
-- [ ] Login/Register (simpel)
+- Typisierung in Frontend und Backend
+- automatisierte Tests fuer Login, Taskfluss und Algebra-Validierung
+- klare Fehlercodes vom Validator
+- Healthchecks fuer API und Validator
 
-### Phase 2: Features (Woche 2-3)
+### 13.2 Sicherheit
 
-- [ ] Difficulty Adaptation
-- [ ] Spaced Repetition
-- [ ] Statistics Dashboard
-- [ ] Session Summary
+- JWT mit sinnvoller Ablaufzeit
+- Passwort-Hashing mit bcrypt oder argon2
+- CORS nur fuer Frontend-Domain in Produktion
+- Secrets nur ueber Environment-Variablen
+- serverseitige Validierung aller Nutzereingaben
 
-### Phase 3: Polish (Woche 3-4)
+### 13.3 Datenschutz und Compliance
 
-- [ ] Responsive Design (Mobile/Tablet)
-- [ ] Performance Optimization
-- [ ] Error Handling & Logging
-- [ ] Deployment & Monitoring
-
-### Phase 4: Extensions
-
-- [ ] Websocket für Real-time Leaderboards (optional)
-- [ ] Weitere Module (Geometry, etc.)
-- [ ] Mobile App (React Native)
+- standardmaessig keine nicht notwendigen Cookies oder Tracker im MVP
+- falls spaeter Analytics oder Marketing-Tools eingesetzt werden, nur mit Einwilligungsmechanismus
+- Impressum und Datenschutzerklaerung versionierbar pflegen
+- Datenexport fuer Benutzer vorsehen
+- Account-Loeschprozess definieren
+- Hetzner als Hosting-Dienstleister in der Datenschutzerklaerung beruecksichtigen
 
 ---
 
-## 12. Ressourcen & Tools
+## 14. Risiken und Gegenmassnahmen
 
-- **React Docs**: https://react.dev
-- **FastAPI Docs**: https://fastapi.tiangolo.com
-- **SQLAlchemy Async**: https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html
-- **SymPy**: https://www.sympy.org/en/index.html
-- **Tailwind CSS**: https://tailwindcss.com
-- **Docker**: https://docs.docker.com
-- **Hetzner Docs**: https://docs.hetzner.cloud
+| Risiko                                          | Bedeutung             | Gegenmassnahme                                                       |
+| ----------------------------------------------- | --------------------- | -------------------------------------------------------------------- |
+| Algebra-Validierung wird komplexer als erwartet | Gefahr fuer Zeitplan  | Algebra zuerst bauen, andere Module spaeter ergaenzen                |
+| Mobile Eingabe ist zu umstaendlich              | schlechte Nutzbarkeit | fruehe mobile Tests und einfache Input-Syntax                        |
+| Adaptionslogik fuehlt sich unfair an            | falsches Lerngefuehl  | konservative MVP-Logik, Level-Abstieg erst nach Wiederholungsfehlern |
+| Zu viel Infrastruktur im MVP                    | langsamer Start       | Redis und weitere Services erst spaeter hinzufuegen                  |
 
 ---
 
-**Fragen?** Was möchtest du als erstes implementieren?
+## 15. Reihenfolge der ersten Implementierung
+
+Die konkrete Bau-Reihenfolge sollte so aussehen:
+
+1. Fastify-API mit Auth und Prisma
+2. React-Frontend mit Login und Trainingsshell
+3. SymPy-Validator-Service
+4. Algebra-Ende-zu-Ende
+5. Kopfrechnen und Brueche
+6. Dashboard und Export
+7. Hetzner-Deployment
+
+---
+
+## 16. Fazit
+
+Der Plan ist jetzt auf eine einzige Zielarchitektur festgezogen: React im Frontend, Node.js als Hauptbackend, SymPy als interne Fachkomponente und Deployment nach deinem bestehenden Hetzner-Multi-App-Standard.

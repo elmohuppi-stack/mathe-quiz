@@ -1,36 +1,44 @@
-# Hetzner Multi-App Deployment Template
+# Hetzner Multi-App Deployment Standard
 
-Diese Vorlage kannst du in andere Projekte kopieren, wenn GitHub Copilot neue Apps auf demselben Hetzner-Server deployen soll.
+Diese Vorlage ist der verbindliche Standard fuer neue Apps auf deinem bestehenden Hetzner-Server.
 
-## Ziel
+## 1. Ziel
 
 - ein gemeinsamer Hetzner-Server
-- mehrere Apps parallel per Subdomain
-- Host-`nginx` als zentraler Router
-- `docker compose` pro App
-- TLS per Let's Encrypt / Certbot
+- mehrere Apps parallel ueber Subdomains
+- Host-Nginx als zentraler Router
+- pro App ein eigenes `docker compose`
+- TLS ueber Let's Encrypt und Certbot
 - DNS bei Spaceship ueber `A @` und `A *`
 
 ---
 
-## 1. Werte pro App festlegen
+## 2. Werte pro App
 
-Passe fuer jedes neue Projekt nur diese Werte an:
+Fuer jede App werden genau diese Werte festgelegt:
 
-| Variable          | Beispiel                |
-| ----------------- | ----------------------- |
-| `APP_SLUG`        | `todo-app`              |
-| `FRONTEND_DOMAIN` | `todo.elmarhepp.de`     |
-| `API_DOMAIN`      | `todo-api.elmarhepp.de` |
-| `WEB_PORT`        | `3011`                  |
-| `API_PORT`        | `3012`                  |
-| `DEPLOY_PATH`     | `/var/www/todo-app`     |
+| Variable          | Beschreibung                         | Beispiel                |
+| ----------------- | ------------------------------------ | ----------------------- |
+| `APP_SLUG`        | technischer Projektname              | `todo-app`              |
+| `FRONTEND_DOMAIN` | oeffentliche Frontend-Domain         | `todo.elmarhepp.de`     |
+| `API_DOMAIN`      | oeffentliche API-Domain              | `todo-api.elmarhepp.de` |
+| `WEB_PORT`        | interner Frontend-Port auf localhost | `3011`                  |
+| `API_PORT`        | interner API-Port auf localhost      | `3012`                  |
+| `DEPLOY_PATH`     | Pfad auf dem Server                  | `/var/www/todo-app`     |
 
-> Wichtig: Ports muessen pro App eindeutig sein.
+Ports muessen pro App eindeutig sein.
+
+### 2.1 Optionaler interner Service
+
+Falls eine App einen rein internen Fachservice benoetigt, zum Beispiel einen SymPy-Validator, gilt:
+
+- keine eigene oeffentliche Domain
+- keine Host-Port-Freigabe
+- nur Zugriff im Compose-Netzwerk
 
 ---
 
-## 2. DNS-Annahmen bei Spaceship
+## 3. DNS-Annahmen bei Spaceship
 
 Empfohlenes Basis-Setup:
 
@@ -39,20 +47,22 @@ Empfohlenes Basis-Setup:
 | `A` | `@`  | `<hetzner-ip>` |
 | `A` | `*`  | `<hetzner-ip>` |
 
-Damit zeigen alle Subdomains auf denselben Server. Welche App ausgeliefert wird, entscheidet danach `nginx` auf Hetzner.
+Damit zeigen alle Subdomains auf denselben Server. Welche App ausgeliefert wird, entscheidet der Host-Nginx auf Hetzner.
 
 ---
 
-## 3. Erwartete Produktions-Umgebung
+## 4. Erwartete Produktions-Umgebung
 
-### Root `.env`
+### 4.1 Root `.env`
 
 ```env
 APP_DOMAIN=<FRONTEND_DOMAIN>
 API_DOMAIN=<API_DOMAIN>
+WEB_PORT=<WEB_PORT>
+API_PORT=<API_PORT>
 ```
 
-### Backend `backend/.env.production`
+### 4.2 Backend `backend/.env.production`
 
 ```env
 NODE_ENV=production
@@ -60,19 +70,36 @@ PORT=3000
 FRONTEND_ORIGIN=https://<FRONTEND_DOMAIN>
 ```
 
-### Frontend `frontend/.env.production`
+### 4.3 Frontend `frontend/.env.production`
 
 ```env
 VITE_API_BASE_URL=https://<API_DOMAIN>
 ```
 
-Weitere App-spezifische Variablen kommen zusaetzlich dazu.
+### 4.4 Interner Service `validator/.env.production` nur wenn vorhanden
+
+```env
+PORT=8001
+```
+
+### 4.5 Datenschutzrelevante Betriebsdaten
+
+Fuer den produktiven Betrieb in Deutschland sollte pro App dokumentiert werden:
+
+- welcher Hosting-Anbieter eingesetzt wird
+- welche Domains verarbeitet werden
+- welche Logs anfallen
+- welche weiteren Drittanbieter eingebunden sind
+
+Diese Informationen werden spaeter fuer die Datenschutzerklaerung und die interne Betriebsdokumentation benoetigt.
 
 ---
 
-## 4. Docker-Compose-Konvention
+## 5. Docker-Compose-Konvention
 
-Die App darf **keine oeffentlichen Ports 80/443** direkt belegen. Stattdessen nur localhost-Bindings:
+Die App darf keine oeffentlichen Ports `80` oder `443` direkt belegen.
+
+Erlaubt sind nur localhost-Bindings fuer Frontend und API:
 
 ```yaml
 services:
@@ -82,12 +109,23 @@ services:
 
   web:
     ports:
-      - "127.0.0.1:<WEB_PORT>:80"
+      - "127.0.0.1:<WEB_PORT>:3000"
 ```
+
+Fuer interne Services gilt:
+
+```yaml
+services:
+  validator:
+    expose:
+      - "8001"
+```
+
+`expose` bedeutet hier nur interne Erreichbarkeit im Compose-Netzwerk.
 
 ---
 
-## 5. Nginx-Template auf Hetzner
+## 6. Nginx-Template auf Hetzner
 
 Datei:
 
@@ -147,7 +185,17 @@ server {
 }
 ```
 
-Danach:
+### 6.1 Zertifikats-Hinweis
+
+Das oben gezeigte Zertifikatspfad-Muster funktioniert, wenn Certbot ein gemeinsames SAN-Zertifikat mit
+
+```bash
+certbot --nginx -d <FRONTEND_DOMAIN> -d <API_DOMAIN>
+```
+
+erstellt. Dann liegt das Zertifikat unter dem Pfad des ersten Domainnamens. Wenn getrennte Zertifikate erzeugt werden, muessen die Pfade je Serverblock angepasst werden.
+
+### 6.2 Aktivierung
 
 ```bash
 ln -s /etc/nginx/sites-available/<APP_SLUG>.conf /etc/nginx/sites-enabled/<APP_SLUG>.conf
@@ -158,16 +206,19 @@ certbot --nginx -d <FRONTEND_DOMAIN> -d <API_DOMAIN>
 
 ---
 
-## 6. Standard-Deploy-Ablauf fuer Copilot
+## 7. Standard-Deploy-Ablauf
 
-Wenn du ein neues Projekt mit Copilot auf diesem Server deployen willst, ist das der Zielablauf:
+Fuer neue Projekte ist das der Zielablauf:
 
-1. Repo nach `/var/www/<APP_SLUG>` bringen
-2. Produktions-`env` anlegen oder aktualisieren
+1. Repository nach `/var/www/<APP_SLUG>` deployen
+2. Produktions-Umgebungsvariablen setzen
 3. `docker compose up -d --build`
-4. Nginx-Site einrichten
-5. HTTPS per Certbot aktivieren
-6. technisch verifizieren:
+4. Nginx-Site anlegen
+5. HTTPS mit Certbot aktivieren
+6. technisch verifizieren
+7. Datenschutz- und Pflichtseiten pruefen
+
+### 7.1 Verifikation
 
 ```bash
 curl -I https://<FRONTEND_DOMAIN>/
@@ -176,14 +227,38 @@ docker compose ps
 nginx -t
 ```
 
+Zusatzcheck vor Livegang:
+
+- Impressum verlinkt und erreichbar
+- Datenschutz verlinkt und erreichbar
+- keine ungewollten Drittanbieter-Skripte im Frontend-Bundle
+- Logging und Retention dokumentiert
+
 ---
 
-## 7. Prompt-Vorlage fuer neue Projekte
+## 8. GitHub-Actions-Konvention
 
-Diesen Text kannst du in ein neues Repo kopieren oder direkt an Copilot geben:
+Der Deployment-Workflow soll sich an diesem Muster orientieren:
+
+```bash
+cd /var/www/<APP_SLUG>
+git pull origin main
+docker compose up -d --build
+docker compose exec api <migration-command>
+```
+
+Wichtig:
+
+- kein Deployment nach `~/appname`
+- immer in den festen Pfad unter `/var/www`
+- Migrationen ueber das Haupt-Backend ausfuehren
+
+---
+
+## 9. Prompt-Vorlage fuer neue Projekte
 
 ```text
-Diese App soll nach meinem Standard auf dem Hetzner-Multi-App-Server deployed werden.
+Diese App soll nach meinem Hetzner-Multi-App-Standard deployed werden.
 
 Rahmenbedingungen:
 - zentraler Host-Nginx auf Hetzner
@@ -193,39 +268,38 @@ Rahmenbedingungen:
 - Frontend-Domain: https://<FRONTEND_DOMAIN>
 - API-Domain: https://<API_DOMAIN>
 - interne Ports: WEB=<WEB_PORT>, API=<API_PORT>
+- interne Fachservices duerfen nicht oeffentlich freigegeben werden
 - HTTPS via certbot --nginx
 
-Bitte richte Docker-Compose, Produktions-Env, Nginx und die Verifikationsschritte entsprechend ein.
+Bitte richte Docker Compose, Produktions-Env, Host-Nginx und die Verifikationsschritte entsprechend ein.
 ```
 
 ---
 
-## 8. Aktuelle Werte fuer `Finanzen`
+## 10. Konkrete Werte fuer Mathe-Quiz
 
-Fuer dieses Repo wurden aktuell diese Werte verwendet:
+| Variable          | Wert                          |
+| ----------------- | ----------------------------- |
+| `APP_SLUG`        | `mathe-quiz`                  |
+| `FRONTEND_DOMAIN` | `mathe-quiz.elmarhepp.de`     |
+| `API_DOMAIN`      | `mathe-quiz-api.elmarhepp.de` |
+| `WEB_PORT`        | `3031`                        |
+| `API_PORT`        | `3032`                        |
+| `DEPLOY_PATH`     | `/var/www/mathe-quiz`         |
 
-| Variable          | Wert                        |
-| ----------------- | --------------------------- |
-| `APP_SLUG`        | `finanzen`                  |
-| `FRONTEND_DOMAIN` | `finanzen.elmarhepp.de`     |
-| `API_DOMAIN`      | `finanzen-api.elmarhepp.de` |
-| `WEB_PORT`        | `3021`                      |
-| `API_PORT`        | `3022`                      |
-| `DEPLOY_PATH`     | `/var/www/finanzen`         |
-
-Der konkrete Ablauf fuer Updates und Rollbacks steht in `docs/deployment.md`.
+Falls ein interner Validator-Service genutzt wird, bleibt er ausschliesslich im Compose-Netzwerk und erhaelt keine oeffentliche Weiterleitung im Host-Nginx.
 
 ---
 
-## 9. Empfehlung fuer dein Domain-Schema
+## 11. Empfehlung fuer das Domain-Schema
 
-Fuer bis zu 20 Apps ist dieses Muster sauber und skalierbar:
+Fuer mehrere Apps bleibt dieses Muster sauber und skalierbar:
 
 - `benzin.elmarhepp.de`
 - `benzin-api.elmarhepp.de`
 - `todo.elmarhepp.de`
 - `todo-api.elmarhepp.de`
-- `wiki.elmarhepp.de`
-- `wiki-api.elmarhepp.de`
+- `mathe-quiz.elmarhepp.de`
+- `mathe-quiz-api.elmarhepp.de`
 
-So bleibt `elmarhepp.de` als Root-Domain frei fuer eine Landingpage oder ein Portal.
+So bleibt `elmarhepp.de` selbst frei fuer Landingpage oder Portal.

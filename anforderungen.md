@@ -2,803 +2,597 @@
 
 ## 1. Ziel des Systems
 
-Ein interaktives Mathe-Trainingssystem (kein reines Quiz), das gezielt folgende Fähigkeiten verbessert:
+Ein interaktives Mathe-Trainingssystem, das kein reines Quiz ist, sondern gezielt folgende Faehigkeiten verbessert:
 
 - Automatisierung grundlegender Rechenoperationen
-- Reduktion von Flüchtigkeitsfehlern
-- Erhöhung der Verarbeitungsgeschwindigkeit
-- Saubere Anwendung von Umformungsregeln in der Algebra
+- Reduktion von Fluechtigkeitsfehlern
+- Erhoehung der Verarbeitungsgeschwindigkeit
+- saubere Anwendung von Umformungsregeln in der Algebra
 
-Das System muss **adaptiv**, **messbar** und **erweiterbar** sein.
+Das System muss adaptiv, messbar und erweiterbar sein.
 
 ---
 
 ## 2. Kernfunktionale Anforderungen
 
-### 2.1 Aufgabenmodule (Module-System)
+### 2.1 Module-System
 
-Das System muss modular aufgebaut sein. Jedes Modul hat:
+Das System muss modular aufgebaut sein. Jedes Modul besitzt:
 
-- Eigene Aufgabentypen
-- Eigene Bewertungslogik
-- Eigene Metriken
+- eigene Aufgabentypen
+- eigene Bewertungslogik
+- eigene Metriken
+- eigene Schwierigkeitsstufen
 
-#### Pflicht-Module (MVP):
+### 2.2 Pflicht-Module im MVP
 
-**A. Kopfrechnen**
+#### A. Kopfrechnen
 
-- Addition, Subtraktion, Multiplikation, Division
-- Zahlenbereiche konfigurierbar
+- Addition
+- Subtraktion
+- Multiplikation
+- Division
+- konfigurierbare Zahlenbereiche
 
-**B. Brüche & Prozent**
+#### B. Brueche und Prozent
 
-- Brüche addieren/subtrahieren
-- Kürzen/Erweitern
+- Brueche addieren und subtrahieren
+- Kuerzen und Erweitern
 - Prozent von X
-- Prozentuale Veränderung
+- prozentuale Veraenderung
 
-**C. Algebra – Gleichungen umformen (Kernmodul)**
+#### C. Algebra - Gleichungen umformen
 
-- Lineare Gleichungen
-- Fokus: Schritt-für-Schritt-Umformung
+- lineare Gleichungen
+- Fokus auf Schritt-fuer-Schritt-Umformung
+- Validierung des naechsten korrekten Schritts
 
-### 2.2 Aufgabentypen (pro Modul)
+### 2.3 Mindestumfang pro Modul im MVP
 
-| Typ                            | Beschreibung                                       | Eingabe                              | Validierung                             |
-| ------------------------------ | -------------------------------------------------- | ------------------------------------ | --------------------------------------- |
-| **Typ 1: Direktantwort**       | Einfache Aufgabe mit Endergebnis                   | Numerisch oder algebraisch           | Richtig/Falsch + Lösung                 |
-| **Typ 2: Schritt-für-Schritt** | (Algebra) User gibt nächsten Umformungsschritt ein | Algebraischer Schritt                | Validierung jedes Schritts einzeln      |
-| **Typ 3: Regel-Erkennung**     | Frage: „Welche Regel wurde angewendet?"            | Multiple Choice                      | Richtig/Falsch                          |
-| **Typ 4: Valid / Invalid**     | Zwei Gleichungen gegeben                           | Benutzer entscheidet: korrekt/falsch | Ist die Umformung mathematisch korrekt? |
-| **Typ 5: Speed-Drill**         | Viele Aufgaben hintereinander                      | Schnelle numerische Eingabe          | Fokus: Reaktionszeit                    |
+| Modul               | Muss im MVP koennen                                                      |
+| ------------------- | ------------------------------------------------------------------------ |
+| Kopfrechnen         | Direktantwort, Speed-Drill, Basis-Leveling                               |
+| Brueche und Prozent | Direktantwort, Basis-Feedback, Basis-Leveling                            |
+| Algebra             | Direktantwort, Schritt-fuer-Schritt, Valid/Invalid, Fehlerklassifikation |
 
 ---
 
-## 3. Gleichungsumformung – Spezifikation
+## 3. Aufgabentypen
 
-### 3.1 Unterstützte Regeln
+| Typ                  | Beschreibung                                  | Eingabe                               | Erwartetes Verhalten                                  |
+| -------------------- | --------------------------------------------- | ------------------------------------- | ----------------------------------------------------- |
+| Direktantwort        | Aufgabe mit eindeutigem Endergebnis           | numerisch oder algebraisch            | Antwort pruefen, Loesung anzeigen, Metriken speichern |
+| Schritt-fuer-Schritt | Benutzer gibt genau den naechsten Schritt ein | algebraischer Ausdruck oder Gleichung | Schritt validieren, Regel benennen, Feedback geben    |
+| Regel-Erkennung      | Benutzer erkennt angewendete Regel            | Multiple Choice                       | richtige Regel oder Fehlklassifikation anzeigen       |
+| Valid/Invalid        | Benutzer bewertet eine Umformung              | korrekt oder falsch                   | mathematische und regelbasierte Bewertung anzeigen    |
+| Speed-Drill          | Folge kurzer Aufgaben ohne Unterbrechung      | kurze numerische Eingabe              | Fokus auf Antwortzeit und Serienleistung              |
 
-Das System MUSS folgende Regeln explizit modellieren:
+### 3.1 Verbindliches Task-Datenmodell
 
-- Addition/Subtraktion auf beiden Seiten
-- Multiplikation/Division auf beiden Seiten
-- Klammern auflösen (Distributivgesetz)
+Jede generierte Aufgabe muss mindestens folgende Felder besitzen:
+
+```json
+{
+  "task_id": "uuid",
+  "module": "algebra",
+  "task_type": "step_by_step",
+  "difficulty_level": "L2",
+  "prompt": "2x + 3 = 11",
+  "expected_answer": "2x = 8",
+  "validation_mode": "next_step",
+  "metadata": {
+    "rule": "subtract_both_sides",
+    "time_limit_ms": null
+  }
+}
+```
+
+---
+
+## 4. Algebra-Spezifikation
+
+### 4.1 Unterstuetzte Regeln
+
+Das System muss im MVP folgende Regeln explizit modellieren:
+
+- Addition oder Subtraktion auf beiden Seiten
+- Multiplikation oder Division auf beiden Seiten
+- Klammern aufloesen mit Distributivgesetz
 - Terme zusammenfassen
 - Variable isolieren
 
-### 3.2 Validierungslogik (Konkrete Implementierung)
+### 4.2 Begriffsabgrenzung
 
-Für jeden Schritt müssen folgende Prüfungen erfolgen:
+| Begriff                     | Bedeutung                                                           | Beispiel                  |
+| --------------------------- | ------------------------------------------------------------------- | ------------------------- |
+| Aequivalente Terme          | Zwei Ausdruecke mit identischem Wert fuer gleiche Variablenbelegung | `2x + 3` und `3 + 2x`     |
+| Aequivalente Gleichungen    | Zwei Gleichungen mit identischer Loesungsmenge                      | `2x + 3 = 11` und `x = 4` |
+| Korrekter naechster Schritt | Eine zulaessige Einzeloperation aus dem aktuellen Zustand           | `2x + 3 = 11` -> `2x = 8` |
 
-1. **Äquivalenz-Test**: `simplify(eq1_lhs - eq1_rhs) == simplify(eq2_lhs - eq2_rhs)`
-   - Falls FALSE: Gleichung ist nicht äquivalent → **Fehler!**
+### 4.3 Validierungslogik
 
-2. **Regelkonsistenz**: War die angewendete Operation auf BEIDE Seiten angewendet?
-   - Beispiel: `2x+3=11` → `2x=8`: Operation `-3` muss auf beiden Seiten sein
+Fuer Schritt-fuer-Schritt-Aufgaben muessen drei Pruefungen erfolgen:
 
-3. **Simplification Check**: Sind unnötige Komplexitäten vorhanden?
-   - Beispiel: `2x-2x=0` statt `0=0` (nicht vereinfacht)
+1. Syntaxpruefung
+2. mathematische Aequivalenzpruefung
+3. regelbasierte Schrittpruefung
 
-#### Fehlerklassifikation (detailliert):
+#### 4.3.1 Syntaxpruefung
 
-| Fehlertyp                         | Beschreibung                      | Beispiel                              |
-| --------------------------------- | --------------------------------- | ------------------------------------- |
-| **Regelverletzung**               | Operation nicht auf beiden Seiten | Nur rechts -3 statt auf beiden Seiten |
-| **Vorzeichenfehler**              | Vorzeichen umgedreht              | `+3` statt `-3` beim Verschieben      |
-| **Unvollständige Transformation** | Nicht vollständig durchgeführt    | Klammern nur teilweise aufgelöst      |
-| **Falsche Vereinfachung**         | Mathematisch falsch kombiniert    | `2x + x ≠ 2x` (falsch) statt `= 3x`   |
-| **Zu großer Schritt**             | Mehrere Operationen auf einmal    | `-3` UND `÷2` in einem Schritt        |
+Die Eingabe muss als algebraischer Ausdruck oder als Gleichung parsebar sein.
 
-### 3.3 Eingabeformat (Konkrete Spezifikation)
+#### 4.3.2 Mathematische Aequivalenzpruefung
 
-#### Erlaubte Syntax:
+Referenzimplementierung im MVP:
 
-- **Zahlen**: `1`, `2`, `-3`, `0.5`, Brüche `(1/2)`
-- **Variable**: `x`, `y`, `z` (Kleinbuchstaben)
-- **Operatoren**: `+`, `-`, `*`, `/`, `^` (für Potenzen)
-- **Klammern**: `()`, auch verschachtelt
-- **Leerzeichen**: beliebig (`2x + 3` = `2x+3`)
-- **Gleichheit**: `=` trennt linke/rechte Seite
+- symbolische Pruefung mit SymPy
+- Gleichungen werden in Normalform gebracht
+- Aequivalenztest erfolgt ueber identische Loesungsmenge oder symbolische Vereinfachung
 
-#### Gültige Beispiele:
+Beispielansatz:
 
+```text
+simplify(lhs1 - rhs1) und simplify(lhs2 - rhs2)
 ```
+
+#### 4.3.3 Regelbasierte Schrittpruefung
+
+Selbst wenn zwei Gleichungen aequivalent sind, darf der Schritt in Schritt-fuer-Schritt-Aufgaben abgelehnt werden, wenn:
+
+- mehrere Operationen gleichzeitig ausgefuehrt wurden
+- die verlangte Regel nicht angewendet wurde
+- der Schritt didaktisch zu gross ist
+
+### 4.4 Fehlerklassifikation
+
+| Fehlertyp                      | Bedeutung                                               | Beispiel                                |
+| ------------------------------ | ------------------------------------------------------- | --------------------------------------- |
+| Regelverletzung                | Operation nicht korrekt auf beide Seiten angewendet     | nur rechts `-3` statt auf beiden Seiten |
+| Vorzeichenfehler               | Vorzeichen beim Umformen falsch behandelt               | `+3` statt `-3`                         |
+| Unvollstaendige Transformation | zulaessiger Schritt nicht vollstaendig ausgefuehrt      | Klammer nur teilweise aufgeloest        |
+| Falsche Vereinfachung          | Terme mathematisch falsch zusammengefasst               | `2x + x = 2x`                           |
+| Zu grosser Schritt             | mehrere Einzelschritte in einem Schritt zusammengezogen | `2x + 3 = 11` -> `x = 4`                |
+| Syntaxfehler                   | Eingabe ist nicht parsebar                              | unvollstaendige Gleichung               |
+
+### 4.5 Eingabeformat
+
+#### Erlaubte Syntax
+
+- Zahlen: `1`, `2`, `-3`, `0.5`, `1/2`
+- Variablen: `x`, `y`, `z`
+- Operatoren: `+`, `-`, `*`, `/`, `^`
+- Klammern: `()`
+- Leerzeichen: optional
+- Gleichheitszeichen: genau ein `=` bei Gleichungen
+
+#### Gueltige Beispiele
+
+```text
 2x+3=11
 (x+1)*2=10
-x^2-4=0
 -3x+5-x=2
 ```
 
-#### Parser-Implementierung (MUSS):
+#### Nicht Teil des MVP
 
-- **SymPy** zur symbolischen Verarbeitung
-- **Äquivalenzprüfung**: `lhs - rhs = 0` vor/nach Schritt (`simplify()`)
-- **Erkennung äquivalenter Formen**: `2x+3 ≡ 3+2x`, `x ≡ 4` (wenn Lösung)
-- **Normalisierte Ausgabe** für Vergleiche
+- Gleichungssysteme
+- Funktionen mit mehreren Variablen in einer Aufgabe
+- Trigonometrie
+- Wurzeln, Logarithmen und symbolische Spezialfaelle ausserhalb linearer Gleichungen
 
 ---
 
-## 4. Adaptives Schwierigkeitssystem
+## 5. Adaptives Schwierigkeitssystem
 
-### 4.1 Eingangsparameter pro Aufgabe
+### 5.1 Eingangsparameter
 
-- Antwortzeit (ms)
-- Korrektheit (ja/nein)
+Fuer jede beantwortete Aufgabe muessen mindestens erfasst werden:
+
+- Antwortzeit in Millisekunden
+- Korrektheit
 - Anzahl Fehlversuche
+- aktuelles Modul
+- aktueller Level
 
-### 4.2 Anpassungslogik (Konkrete Schwellenwerte)
+### 5.2 Antwortzeit-Klassifikation
 
-#### Klassifikation pro Aufgabe:
+Fuer den MVP werden drei Klassen verwendet:
 
-- **Schnell**: Antwortzeit < Median_Zeit - 1σ (oberes Quartil)
-- **Langsam**: Antwortzeit > Median_Zeit + 1σ
-- **Mittel**: Dazwischen
+- schnell
+- normal
+- langsam
 
-#### Anpassungslogik:
+Die Schwellenwerte werden pro Modul und Level aus den letzten korrekten Antworten des Benutzers berechnet.
 
-| Ergebnis                   | Aktion                                     |
-| -------------------------- | ------------------------------------------ |
-| ✓ Korrekt + Schnell        | Level +1 (schwerer)                        |
-| ✓ Korrekt + Mittel         | Gleiches Level beibehalten                 |
-| ✓ Korrekt + Langsam        | 50% Wahrscheinlichkeit Level -1            |
-| ✗ Falsch                   | Level -1 oder ähnliche Aufgabe wiederholen |
-| ✗ Falsch + 2x Fehlversuche | Level -1 + Hinweis auf Regelbruch          |
+Empfohlene MVP-Regel:
 
-#### Schwellenwerte (pro Session initialisieren):
+- schnell: Zeit kleiner als persoenlicher Median
+- normal: Zeit zwischen Median und Median + 50 Prozent
+- langsam: Zeit groesser als Median + 50 Prozent
 
-- **Ausgangs-Median**: Durchschnittliche Zeit der letzten 5 korrekten Aufgaben
-- **Neuberechnung**: Alle 10 Aufgaben
+### 5.3 Anpassungslogik
 
-### 4.3 Schwierigkeitsebenen (Konkrete Definition)
+| Zustand                    | Aktion                                                                        |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| korrekt + schnell          | naechstes Muster leicht schwerer oder gleicher Level mit haerteren Parametern |
+| korrekt + normal           | gleicher Level                                                                |
+| korrekt + langsam          | gleiches Muster wiederholen                                                   |
+| falsch beim ersten Versuch | aehnliche Aufgabe priorisieren                                                |
+| falsch mehrfach            | auf einfacheres Muster zurueckgehen                                           |
 
-Jedes Modul benötigt interne Level mit konkreten Regeln:
+Ein einzelner langsamer, aber korrekter Versuch darf im MVP nicht automatisch zu einem Level-Abstieg fuehren.
 
-#### Kopfrechnen:
+### 5.4 Schwierigkeitsebenen
 
-| Level | Zahlenbereich | Operationen              |
-| ----- | ------------- | ------------------------ |
-| L1    | 1-10          | Addition, Subtraktion    |
-| L2    | 1-20          | Alle Operationen         |
-| L3    | 1-100         | Multiplikation, Division |
-| L4    | -100 bis 100  | Gemischte Operationen    |
+#### Kopfrechnen
 
-#### Brüche & Prozent:
+| Level | Zahlenbereich | Fokus                      |
+| ----- | ------------- | -------------------------- |
+| L1    | 1-10          | Addition, Subtraktion      |
+| L2    | 1-20          | gemischte Grundrechenarten |
+| L3    | 1-100         | Multiplikation, Division   |
+| L4    | -100 bis 100  | gemischte Aufgaben         |
 
-| Level | Anforderung                                |
+#### Brueche und Prozent
+
+| Level | Fokus                                      |
 | ----- | ------------------------------------------ |
-| L1    | Brüche addieren/subtrahieren (gleichnamig) |
-| L2    | Brüche mit verschiedenen Nennern (bis 12)  |
-| L3    | Kürzen/Erweitern (Nenner bis 20)           |
-| L4    | Prozent von X (Zahlen bis 1000)            |
-| L5    | Prozentuale Veränderung (mit Bruchteilen)  |
+| L1    | gleichnamige Brueche                       |
+| L2    | ungleichnamige Brueche mit kleinen Nennern |
+| L3    | Kuerzen und Erweitern                      |
+| L4    | Prozent von X                              |
+| L5    | prozentuale Veraenderung                   |
 
-#### Algebra – Gleichungen umformen:
+#### Algebra
 
-| Level | Beispiel              | Eigenschaften              |
-| ----- | --------------------- | -------------------------- |
-| L1    | `2x + 3 = 11`         | Einfache lineare Gleichung |
-| L2    | `-2x + 5 = -3`        | Negative Koeffizienten     |
-| L3    | `2x + 3x + 1 = 10`    | Mehrere Terme mit x        |
-| L4    | `2(x + 3) = 14`       | Einfache Klammer           |
-| L5    | `(2x + 1)*3 = 15 + x` | Komplexere Umformung       |
+| Level | Muster              | Einschraenkung                 |
+| ----- | ------------------- | ------------------------------ |
+| L1    | `ax + b = c`        | positive Koeffizienten         |
+| L2    | `ax + b = c`        | negative Koeffizienten erlaubt |
+| L3    | `ax + bx + c = d`   | mehrere Terme auf einer Seite  |
+| L4    | `a(x + b) = c`      | einfache Klammer               |
+| L5    | `a(x + b) = cx + d` | Terme auf beiden Seiten        |
 
 ---
 
-## 5. Wiederholungslogik (Spaced Repetition)
+## 6. Wiederholungslogik
 
-### Fehlerhafte Aufgaben:
+### 6.1 Ziel
 
-- Sofort erneut anbieten (nächste Aufgabe in gleicher Session)
-- Dann nach 2-3 weitere richtige Aufgaben erneut
-- Dann nach ~15 min (nächste Session)
+Fehlerhafte oder auffaellig langsame Aufgaben sollen zeitnah erneut auftauchen, ohne den Trainingsfluss zu blockieren.
 
-### Langsame Aufgaben (Hesitation):
+### 6.2 Prioritaeten im MVP
 
-- Markieren wenn Zeit > 2× Durchschnitt für Level
-- In nächster Session zu 30% erneut anbieten
+1. gerade falsch beantwortete Aufgabe oder sehr aehnliche Variation
+2. Aufgabenmuster mit wiederholten Fehlern
+3. Aufgabenmuster mit auffaellig hoher Antwortzeit
+4. neue Aufgaben
 
-### Ähnliche Aufgaben generieren:
+### 6.3 Mindestverhalten
 
-- Gleiche Struktur, unterschiedliche Zahlen
-- Beispiel: L2 (ax + b = c) → nächste Zahlen im gleichen Bereich
+- fehlerhafte Aufgaben kurzfristig wiederholen
+- langsame Aufgaben mit geringerer Prioritaet erneut einplanen
+- aehnliche Aufgaben mit anderen Zahlen generieren
 
-### Tracking-Datenstruktur:
+### 6.4 Minimales Queue-Modell
 
+```json
+{
+  "failed_patterns": [{ "pattern": "ax_plus_b_equals_c", "priority": 10 }],
+  "slow_patterns": [
+    { "pattern": "fractions_unlike_denominators", "priority": 3 }
+  ]
+}
 ```
-failed_tasks: [(task_id, timestamp), ...]
-slow_tasks: [(task_id, timestamp, avg_time), ...]
-```
-
-### Priorisierungsreihenfolge:
-
-1. Fehler < 2 min alt (sofort erneut)
-2. Fehler 2-15 min alt (Priorität +2)
-3. Langsame Aufgaben (Priorität +1)
-4. Neue Aufgaben (Priorität 0)
 
 ---
 
-## 6. Metriken & Tracking
+## 7. Aufgaben-Generierung
 
-### 6.1 Pro Aufgabe speichern:
+### 7.1 Allgemeine Anforderungen
 
-- Aufgabentyp
-- Modul
-- Schwierigkeitslevel
-- Antwortzeit (ms)
-- Korrekt/Falsch
-- Fehlertyp (falls falsch)
-- Zeitstempel
+- Aufgaben muessen parametrisch generiert werden
+- Parameter haengen von Modul und Level ab
+- identische Aufgaben duerfen in einer Session nicht doppelt auftauchen
 
-### 6.2 Aggregierte Metriken:
+### 7.2 Harte Generator-Constraints
 
-- **Genauigkeit** (%) pro Modul
-- **Durchschnittliche Antwortzeit** (ms) pro Level
-- **Zeit pro Aufgabentyp**
-- **Fehlerverteilung** nach Kategorie
-- **Fortschritt** pro Level über Zeit
+Fuer algebraische Aufgaben im MVP gilt:
 
-### 6.3 Erweiterte Metriken:
+- kein Null-Koeffizient bei linearen Aufgaben
+- keine Division durch 0
+- eindeutige Loesung
+- Loesung muss ganze Zahl oder einfacher Bruch sein
+- keine unnoetig grossen Zahlen
 
-- **Hesitation Score**: % Aufgaben mit Zeit > 2× Durchschnitt
-- **Stabilität**: Varianz der Antwortzeiten (niedrig = konsistent)
-
----
-
-## 7. Trainingsmodi
-
-Das System muss mehrere Modi unterstützen:
-
-| Modus                   | Eigenschaften                        | Fokus                  |
-| ----------------------- | ------------------------------------ | ---------------------- |
-| **Accuracy Mode**       | Kein Zeitlimit                       | Korrekte Lösungen      |
-| **Speed Mode**          | Zeitlimit pro Aufgabe (~5-10s)       | Schnelle Reaktionen    |
-| **Mixed Mode**          | Kombination aus Accuracy + Speed     | Balanciertes Training  |
-| **Step Mode** (Algebra) | Schrittweise Eingabe mit Validierung | Verständnis der Regeln |
-
----
-
-## 8. Aufgaben-Generierung
-
-### 8.1 Anforderungen:
-
-- Aufgaben müssen parametrisch generiert werden
-- Parameter pro Level definiert (Zahlenbereich, Operationen)
-- Keine identischen Aufgaben in einer Session
-
-### 8.2 Generierungs-Algorithmus:
+### 7.3 Beispiel fuer Algebra-Generator
 
 ```pseudocode
-generate_algebra_task(level):
-  if level == 1:
-    return f"{rand(1,10)}x + {rand(1,20)} = {rand(1,50)}"
-  if level == 2:
-    return f"{rand(-5,5)}x + {rand(-20,20)} = {rand(-50,50)}"
-  if level == 3:
-    return f"{rand(1,5)}x + {rand(1,5)}x + {rand(1,10)} = {rand(10,50)}"
-  ...
-
-  Constraints:
-  - Lösung muss ganze Zahl oder einfacher Bruch sein
-  - Keine Division durch 0
-  - Zahlenbereich begrenzen
+generateAlgebraTask(level):
+  choose coefficients according to level
+  reject if a == 0
+  reject if solution is not simple
+  reject if task hash already exists in session
+  return task
 ```
 
-### 8.3 Validierung:
+### 7.4 Korrekte Schrittbeispiele
 
-- Generierte Aufgabe lösen (mit SymPy)
-- Falls keine einfache Lösung → verwerfen, neu generieren
-- **Deduplizierung**: In Session nicht zweimal die gleiche Aufgabe
-
-### 8.4 Variationen für Schritt-für-Schritt-Aufgaben:
-
-#### Korrekte Schritte generieren:
-
-```
-eq1 = "2x + 3 = 11"
-step1 = "2x = 8"        # Regel: beide Seiten -3
-step2 = "x = 4"         # Regel: beide Seiten ÷2
+```text
+Ausgang: 2x + 3 = 11
+korrekter naechster Schritt: 2x = 8
+korrekter Folgeschritt: x = 4
 ```
 
-#### Fehlerhafte Schritte (für Valid/Invalid Aufgaben):
+### 7.5 Fehlerhafte Schrittbeispiele
 
+```text
+Ausgang: 2x + 3 = 11
+Invalid 1: 2x + 3 = 8      # nur rechte Seite veraendert
+Invalid 2: 2x = 14         # Vorzeichenfehler
+Invalid 3: x = 4           # mathematisch aequivalent, aber als naechster Schritt zu gross
 ```
-wrong1 = "2x = 8"        # Regel verletzt (nur eine Seite -3)
-wrong2 = "2x = 14"       # Vorzeichenfehler (+3 statt -3)
-wrong3 = "x = 8"         # Zu großer Schritt (beide Operationen auf einmal)
-```
+
+---
+
+## 8. Metriken und Tracking
+
+### 8.1 Pro Antwort speichern
+
+- Benutzer-ID
+- Aufgabe oder Aufgabenmuster
+- Modul
+- Aufgabentyp
+- Schwierigkeitslevel
+- Antwortzeit in Millisekunden
+- korrekt oder falsch
+- Fehlertyp
+- Timestamp
+
+### 8.2 Aggregierte Metriken
+
+- Genauigkeit pro Modul
+- durchschnittliche Antwortzeit pro Modul und Level
+- Fehlerverteilung nach Kategorie
+- Fortschritt pro Level
+- Anteil langsamer Antworten
+
+### 8.3 Session-Metriken
+
+- Anzahl Aufgaben
+- Genauigkeit
+- durchschnittliche Zeit
+- haeufigste Fehlertypen
+- Level-Aenderung waehrend der Session
 
 ---
 
 ## 9. Feedback-System
 
-### 9.1 Sofort-Feedback (nach jeder Aufgabe):
+### 9.1 Sofort-Feedback
 
-**Bei korrekt:**
+Nach jeder Aufgabe muss das System mindestens anzeigen:
 
-```
-✓ Richtig! Zeit: 2.3s
-Nächste Aufgabe wird schwerer.
-```
+- richtig oder falsch
+- richtige Loesung oder korrekten naechsten Schritt
+- kurze Fehlererklaerung bei falscher Antwort
 
-**Bei falsch:**
+### 9.2 Fehlerfeedback
 
-```
-✗ Nicht richtig.
-Fehler: Operation wurde nicht auf beide Seiten angewendet.
-Richtig: 2x + 3 = 11 → 2x = 11 - 3 = 8
-(beide Seiten -3)
-```
+Beispiele:
 
-### 9.2 Fehlerfeedback (spezifisch pro Fehlertyp):
+- Regelverletzung: Die Operation muss auf beiden Seiten ausgefuehrt werden.
+- Vorzeichenfehler: Beim Verschieben von `+3` wird daraus `-3`.
+- Unvollstaendig: Die Klammer wurde noch nicht vollstaendig aufgeloest.
+- Falsche Vereinfachung: `2x + x` ergibt `3x`, nicht `2x`.
 
-- **Regelverletzung**: „Die Operation muss auf BEIDEN Seiten erfolgen!"
-- **Vorzeichenfehler**: „Achtung: +3 wird zu -3 beim Verschieben!"
-- **Unvollständig**: „Klammer noch nicht vollständig aufgelöst."
-- **Falsche Vereinfachung**: „2x + x ergibt 3x, nicht 2x!"
+### 9.3 Session-Feedback
 
-### 9.3 Session-Feedback (Zusammenfassung):
+Am Ende einer Session muss das System zeigen:
 
-```
-=== Session Summary ===
-Modul: Algebra - Gleichungen umformen
-Genauigkeit: 85% (17/20 richtig)
-Ø Antwortzeit: 3.2s
-
-Fortschritt:
-✓ Schnelle Lösungen: 6 → Level +1
-⚠ Langsame Lösungen: 3 → nächstes Mal üben
-
-Häufigste Fehler:
-1. Vorzeichenfehler (5x)
-2. Regelverletzung (2x)
-```
+- Genauigkeit
+- durchschnittliche Antwortzeit
+- haeufigste Fehlerkategorie
+- Empfehlung fuer das naechste Training
 
 ---
 
-## 10. Benutzeroberfläche (UX-Anforderungen)
+## 10. Trainingsmodi
 
-- **Minimale Latenz**: < 200ms zwischen Aufgaben
-- **Tastatureingabe** priorisiert (Fokus auf Input)
-- **Keine unnötigen Animationen** (Performance)
-- **Klare, reduzierte Darstellung** (Fokus auf Aufgabe)
-- **Responsive Design**: Funktioniert auf Mobile/Tablet/Desktop
+| Modus     | Beschreibung                                   | Muss im MVP enthalten sein |
+| --------- | ---------------------------------------------- | -------------------------- |
+| Accuracy  | kein Zeitlimit, Fokus auf korrekte Bearbeitung | ja                         |
+| Speed     | Zeitlimit pro Aufgabe                          | ja                         |
+| Mixed     | Mischung aus Accuracy und Speed                | optional                   |
+| Step Mode | schrittweise Algebra-Eingabe                   | ja                         |
 
 ---
 
-## 11. Technische Anforderungen
+## 11. UX-Anforderungen
 
-### 11.1 Architektur:
+- geringe Latenz zwischen Aufgaben, Zielwert unter 200 ms im Normalfall
+- Tastatureingabe priorisiert
+- klare, reduzierte Darstellung
+- responsive Layouts fuer Mobile, Tablet und Desktop
+- kein animierter Overhead, der das Training verlangsamt
+- mobile Algebra-Eingabe muss ohne Spezialtastatur bedienbar sein
 
-Das System muss modular sein mit klarer Trennung:
+---
 
-- **Aufgabenlogik**: Generator, Validierung
-- **Bewertungslogik**: Scoring, Level-Anpassung
-- **Persistierung**: Datenbank, Speicherung
-- **UI-Layer**: React Frontend (nur Daten empfangen/senden)
+## 12. Technische Anforderungen
 
-### 11.2 Algebra-Engine (KONKRET):
+### 12.1 Architekturprinzipien
 
-**MUSS verwenden:**
+- Trennung von UI, Aufgabenlogik, Bewertungslogik und Persistenz
+- modulare Erweiterbarkeit pro Mathe-Bereich
+- serverseitige Validierung der Antworten
+- nachvollziehbare, testbare Regel-Engine fuer Algebra
 
-- **SymPy**: Symbolische Verarbeitung, Äquivalenzprüfung
-- **Parsing**: `SymPy.sympify()` für Input-Parsing
-- **Äquivalenztest**: `simplify(eq1 - eq2) == 0`
-- **AST-Struktur**: SymPy-Expr für Regelvalidation
+### 12.2 Referenzimplementierung fuer den MVP
 
-**Nicht-Ziel**: Vollständiges CAS (Computer Algebra System) – SymPy reicht aus
+Eine empfohlene Referenzimplementierung fuer die Algebra-Validierung ist:
 
-### 11.3 Datenhaltung:
+- Web-Frontend in React
+- API-Backend in Node.js mit TypeScript
+- symbolische Validierung mit SymPy, direkt oder ueber internen Python-Service
 
-**Struktur:**
+Wichtig ist die Faehigkeit, Regeln und Aequivalenz korrekt zu pruefen. Die konkrete Prozessgrenze ist Implementierungsdetail, solange die Schnittstelle stabil bleibt.
+
+### 12.3 Datenhaltung
+
+Das System muss mindestens speichern:
+
+- Benutzerkonto
+- Aufgabenhistorie
+- Sessions
+- Modul- und Level-Fortschritt
+- Fehlermuster
+
+Beispielstruktur:
 
 ```json
 {
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "created_at": "2026-04-22T10:00:00Z"
-  },
-  "session_history": [
-    {
-      "date": "2026-04-22",
-      "module": "algebra",
-      "accuracy": "85%",
-      "avg_time_ms": 3200
-    }
-  ],
-  "task_history": [
-    {
-      "task_id": "uuid",
-      "timestamp": "2026-04-22T10:05:00Z",
-      "correct": true,
-      "time_ms": 2300,
-      "error_type": null
-    }
-  ],
+  "user_id": "uuid",
   "level_progress": {
-    "kopfrechnen": "L2",
-    "brüche": "L1",
+    "mental_math": "L2",
+    "fractions": "L1",
     "algebra": "L3"
-  }
+  },
+  "sessions": [],
+  "answers": []
 }
 ```
 
-**Deduplizierung:**
+---
 
-- Keine identischen Aufgaben in einer Session
-- Tracking: `Hash(task_content)` → `task_id`
+## 13. Rechtliche Anforderungen fuer Deutschland
+
+Die Website muss fuer den Betrieb in Deutschland mindestens folgende rechtliche Anforderungen erfuellen.
+
+### 13.1 Impressum
+
+Die Website benoetigt ein leicht auffindbares Impressum nach deutschem Recht.
+
+Mindestanforderungen:
+
+- eigener, dauerhaft verfuegbarer Link `Impressum`
+- auf jeder Seite erreichbar, spaetestens im Footer
+- Name und ladungsfaehige Anschrift des Betreibers
+- Kontaktmoeglichkeit, mindestens E-Mail-Adresse
+- falls einschlaegig: Rechtsform, Vertretungsberechtigte, Umsatzsteuer-ID
+
+### 13.2 Datenschutzerklaerung
+
+Die Website benoetigt eine leicht auffindbare Datenschutzerklaerung.
+
+Sie muss mindestens abdecken:
+
+- verantwortliche Stelle
+- welche personenbezogenen Daten verarbeitet werden
+- zu welchen Zwecken die Daten verarbeitet werden
+- Rechtsgrundlagen der Verarbeitung
+- Speicherdauer oder Kriterien fuer die Speicherdauer
+- Empfaenger oder Kategorien von Empfaengern
+- Hosting und eingesetzte Drittanbieter
+- Betroffenenrechte nach DSGVO
+- Kontakt fuer Datenschutzanfragen
+
+### 13.3 Cookies, Analytics und Einwilligung
+
+Fuer den MVP gilt:
+
+- technisch nicht notwendige Cookies oder Tracker nur nach Einwilligung
+- technisch notwendige Cookies duerfen ohne Opt-in eingesetzt werden, muessen aber in der Datenschutzerklaerung beschrieben sein
+- wenn Analytics eingesetzt wird, muss vor Aktivierung eine wirksame Einwilligung eingeholt und protokolliert werden
+- ohne Einwilligungsbanner duerfen im MVP nur technisch notwendige Cookies verwendet werden
+
+### 13.4 Benutzerkonten und DSGVO
+
+Wenn Benutzerkonten vorhanden sind, muss die Anwendung folgende Funktionen unterstuetzen oder organisatorisch absichern:
+
+- Auskunft ueber gespeicherte personenbezogene Daten
+- Korrektur von Stammdaten
+- Loeschung des Kontos oder definierter Loeschprozess
+- Export der eigenen Daten in maschinenlesbarer Form
+
+### 13.5 Minderjaehrige und schulischer Kontext
+
+Da die Anwendung fuer Lernzwecke gedacht ist, muss vor dem produktiven Einsatz geprueft werden:
+
+- ob sich das Angebot an Minderjaehrige richtet
+- ob eine Einwilligung der Erziehungsberechtigten oder eine schulische Rechtsgrundlage relevant wird
+- ob zusaetzliche Informationspflichten fuer Schulen oder Bildungstraeger bestehen
+
+Diese Pruefung ist spaetestens vor dem Livegang erforderlich.
+
+### 13.6 Hosting und Auftragsverarbeitung
+
+Bei produktivem Betrieb mit personenbezogenen Daten muessen die eingesetzten Dienstleister dokumentiert werden, insbesondere:
+
+- Hosting bei Hetzner
+- E-Mail-Dienstleister, falls verwendet
+- Analyse- oder Fehlertracking-Dienste, falls verwendet
+
+Falls rechtlich erforderlich, muessen Auftragsverarbeitungsvertraege abgeschlossen und dokumentiert werden.
+
+### 13.7 Logging und Datensparsamkeit
+
+Im MVP sollen nur die Daten gespeichert werden, die fuer Betrieb, Sicherheit und Lernfortschritt notwendig sind.
+
+Das bedeutet:
+
+- keine unnoetige Speicherung von IP-Adressen in der Anwendungsebene
+- keine Tracking- oder Marketingdaten ohne klaren Zweck
+- Log-Retention begrenzen
+- sensible Daten nicht in Klartext loggen
+
+### 13.8 Pflichtseiten im MVP
+
+Vor dem Livegang muessen mindestens vorhanden sein:
+
+- Seite oder Route `Impressum`
+- Seite oder Route `Datenschutz`
+- Links darauf im Footer
 
 ---
 
-## 12. Erweiterbarkeit
+## 14. Erweiterbarkeit
 
-Das System muss später erweiterbar sein für:
+Spaetere Erweiterungen sollen moeglich sein fuer:
 
-- Weitere mathematische Gebiete (Geometrie, Statistik, etc.)
-- Neue Aufgabentypen
-- Zusätzliche Metriken und Visualisierungen
-- Mehrsprachigkeit
-- Multi-User-Features (Klassenzimmer, Leaderboards)
-
----
-
-## 13. Nicht-Ziele (Abgrenzung)
-
-- ❌ Kein Fokus auf komplexe Textaufgaben
-- ❌ Keine visuelle Spielerei / Gamification als Kernfeature
-- ❌ Kein vollständiges CAS (Computer Algebra System)
-- ❌ Keine AI-basierte Personalisierung (außerhalb der Anforderungen)
+- weitere mathematische Gebiete
+- zusaetzliche Aufgabentypen
+- mehrsprachige Oberflaechen
+- tiefere Analytik
+- Mehrbenutzer- und Lehrkraft-Funktionen
 
 ---
 
-## Fazit
+## 15. Nicht-Ziele
 
-Das System ist **kein klassisches Quiz**, sondern ein:
+- kein Fokus auf komplexe Textaufgaben
+- keine visuelle Spielerei oder Gamification als Kernfeature
+- kein vollstaendiges CAS
+- keine KI-basierte Personalisierung ausserhalb der beschriebenen Adaptionslogik
 
-> **Adaptives, regelbasiertes Trainingssystem für mathematische Mikro-Skills**
+---
 
-mit fokussiertem Design auf schnelle Feedbackschleifen, kontinuierliche Schwierigkeitsanpassung und detailliertes Fehlertracking.
+## 16. Akzeptanzkriterien fuer den MVP
 
-2. Kernfunktionale Anforderungen
-   2.1 Aufgabenmodule (Module-System)
+Der MVP gilt als funktional, wenn folgende Punkte erfuellt sind:
 
-Das System muss modular aufgebaut sein. Jedes Modul hat:
+1. Ein Benutzer kann sich registrieren und anmelden.
+2. Alle drei Pflicht-Module koennen gestartet werden.
+3. Algebra-Aufgaben koennen schrittweise validiert werden.
+4. Fehler werden mindestens einer Kategorie zugeordnet.
+5. Antwortzeit und Korrektheit werden gespeichert.
+6. Die Schwierigkeit passt sich mindestens auf Basis von Korrektheit und Antwortzeit an.
+7. Die Anwendung ist auf Mobile und Desktop nutzbar.
+8. Nach einer Session wird eine Zusammenfassung angezeigt.
+9. Impressum und Datenschutz sind produktiv erreichbar.
 
-eigene Aufgabentypen
-eigene Bewertungslogik
-eigene Metriken
-Pflicht-Module (MVP)
+---
 
-A. Kopfrechnen
+## 17. Fazit
 
-Addition, Subtraktion, Multiplikation, Division
-Zahlenbereiche konfigurierbar
-
-B. Brüche & Prozent
-
-Brüche addieren/subtrahieren
-Kürzen/Erweitern
-Prozent von X
-Prozentuale Veränderung
-
-C. Algebra – Gleichungen umformen (Kernmodul)
-
-Lineare Gleichungen
-Fokus: Schritt-für-Schritt-Umformung
-2.2 Aufgabentypen (pro Modul)
-Typ 1: Direktantwort
-Eingabe: numerisch oder algebraisch
-Output: richtig/falsch + Lösung
-Typ 2: Schritt-für-Schritt (Algebra)
-User gibt nächsten Umformungsschritt ein
-System validiert jeden Schritt einzeln
-Typ 3: Regel-Erkennung
-Frage: „Welche Regel wurde angewendet?“
-Multiple Choice
-Typ 4: Valid / Invalid
-Zwei Gleichungen gegeben
-User entscheidet, ob Umformung korrekt ist
-Typ 5: Speed-Drill
-Viele Aufgaben hintereinander ohne Unterbrechung
-Fokus: Reaktionszeit 3. Gleichungsumformung – Spezifikation
-3.1 Unterstützte Regeln
-
-Das System MUSS folgende Regeln explizit modellieren:
-
-Addition/Subtraktion auf beiden Seiten
-Multiplikation/Division auf beiden Seiten
-Klammern auflösen (Distributivgesetz)
-Terme zusammenfassen
-Variable isolieren
-3.2 Validierungslogik (Konkrete Implementierung)
-
-Für jeden Schritt muss geprüft werden:
-
-1. Äquivalenz: simplify(eq1_lhs - eq1_rhs) == simplify(eq2_lhs - eq2_rhs)
-   - Wenn FALSE: Gleichung ist nicht äquivalent → Fehler!
-2. Regelkonsistenz: War die angewendete Operation auf BEIDE Seiten angewendet?
-   - z.B. „2x+3=11" → „2x=8": Operation „-3" muss auf beiden Seiten sein
-3. Simplification Check: Sind unnötige Komplexitäten vorhanden?
-   - z.B. „2x-2x=0" statt „0=0" (nicht vereinfacht)
-
-Fehlerklassifikation (detailliert):
-
-Regelverletzung: Operation nicht auf beiden Seiten
-Vorzeichenfehler: Vorzeichen umgedreht (z.B. +3 statt -3)
-Unvollständige Transformation: z.B. Klammern teilweise ausgekl ammert
-Falsche Vereinfachung: z.B. 2x+x ≠ 2x (falsch) statt =3x
-Zu großer Schritt: Mehrere Operationen auf einmal (z.B. -3 UND ÷2 in einem Schritt)
-3.3 Eingabeformat (Konkrete Spezifikation)
-
-Erlaubte Syntax:
-
-- Zahlen: 1, 2, -3, 0.5, Brüche (1/2)
-- Variable: x, y, z (Kleinbuchstaben)
-- Operatoren: +, -, \*, /, ^ (für Potenzen)
-- Klammern: (), auch verschachtelt
-- Leerzeichen: beliebig („2x + 3" = „2x+3")
-- Gleichheit: „=" trennt linke/rechte Seite
-
-Gültige Beispiele:
-
-- 2x+3=11
-- (x+1)\*2=10
-- x^2-4=0
-- -3x+5-x=2
-
-Parser-Implementierung (MUSS):
-
-- SymPy zur symbolischen Verarbeitung
-- Äquivalenzprüfung: lhs - rhs = 0 vor/nach Schritt (simplify())
-- Erlaubt Erkennung: 2x+3 ≡ 3+2x, x ≡ 4 (wenn Lösung)
-- Normalisierte Ausgabe für Vergleiche
-
-4. Adaptives Schwierigkeitssystem
-   4.1 Eingangsparameter pro Aufgabe
-   Antwortzeit
-   Korrektheit
-   Anzahl Fehlversuche
-   4.2 Anpassungslogik (Konkrete Schwellenwerte)
-
-Klassifikation pro Aufgabe:
-
-- **Schnell**: Antwortzeit < Median_Zeit - 1 Std.abw. (oberes Quartil)
-- **Langsam**: Antwortzeit > Median_Zeit + 1 Std.abw.
-- **Mittel**: Dazwischen
-
-Anpassungslogik:
-
-✓ Korrekt + Schnell → Level +1 (schwerer)
-✓ Korrekt + Mittel → gleiches Level
-✓ Korrekt + Langsam → 50% Wahrscheinlichkeit Level wiederholen
-✗ Falsch → Level -1 (leichter) oder ähnliche Aufgabe wiederholen
-✗ Falsch + 2x Fehlversuche → Level -1 + Hinweis auf Regelbruch
-
-Schwellenwerte (pro Session initialisieren):
-
-- Ausgangs-Median: Durchschnittliche Zeit der letzten 5 korrekten Aufgaben
-- Neu berechnen: Alle 10 Aufgaben
-  4.3 Schwierigkeitsebenen (Konkrete Definition)
-
-Jedes Modul benötigt interne Level mit konkreten Regeln:
-
-**Kopfrechnen:**
-
-- L1: Zahlenbereich 1-10, nur Addition/Subtraktion
-- L2: Zahlenbereich 1-20, alle Operationen
-- L3: Zahlenbereich 1-100, Multiplikation/Division
-- L4: Zahlenbereich -100 bis 100, gemischte Operationen
-
-**Brüche & Prozent:**
-
-- L1: Brüche addieren/subtrahieren (gleichnamig)
-- L2: Brüche mit verschiedenen Nennern (bis 12)
-- L3: Kürzen/Erweitern (Nenner bis 20)
-- L4: Prozent von X (Zahlen bis 1000)
-- L5: Prozentuale Veränderung (mit Bruchteilen)
-
-**Algebra – Gleichungen umformen:**
-
-- L1: ax + b = c (z.B. 2x + 3 = 11), Lösung: x = 4
-- L2: ax + b = c (mit negativen Koeffizienten, z.B. -2x + 5 = -3)
-- L3: ax + bx + c = d (mehrere Terme mit x)
-- L4: a(x + b) = c (einfache Klammer)
-- L5: (ax + b)(c) = d + ex (komplexere Umformung)
-
-5. Wiederholungslogik (Spaced Repetition – Konkrete Implementierung)
-
-Das System muss:
-
-**Fehlerhafte Aufgaben:**
-
-- Sofort erneut anbieten (nächste Aufgabe in gleicher Session)
-- Dann nach 2-3 weitere richtige Aufgaben erneut
-- Dann nach ~15 min (nächste Session)
-
-**Langsame Aufgaben (Hesitation):**
-
-- Markieren wenn Zeit > 2 x Durchschnitt für Level
-- In nächster Session zu 30% erneut anbieten
-
-**Ähnliche Aufgaben generieren:**
-
-- Gleiche Struktur, unterschiedliche Zahlen
-- z.B. Level 2 (ax + b = c): nächste Zahlen im gleichen Bereich
-
-Tracking (Datenstruktur):
-
-```
-failed_tasks: [(task_id, timestamp), ...]
-slow_tasks: [(task_id, timestamp, avg_time), ...]
-```
-
-Priorisierungsreihenfolge:
-
-1. Fehler < 2 min alt (erneut)
-2. Fehler 2-15 min alt (priorität +2)
-3. Langsame Aufgaben (priorität +1)
-4. Neue Aufgaben (priorität 0)
-5. Metriken & Tracking
-   6.1 Pro Aufgabe speichern
-   Aufgabentyp
-   Modul
-   Schwierigkeit
-   Antwortzeit (ms)
-   korrekt/falsch
-   Fehlertyp (falls falsch)
-   6.2 Aggregierte Metriken
-   Genauigkeit (%)
-   Durchschnittliche Antwortzeit
-   Zeit pro Aufgabentyp
-   Fehlerverteilung nach Kategorie
-   Fortschritt pro Level
-   6.3 Erweiterte Metriken
-   Hesitation Score (Zeit > Schwellenwert)
-   Stabilität (Varianz der Antwortzeiten)
-6. Trainingsmodi
-
-Das System muss mehrere Modi unterstützen:
-
-A. Accuracy Mode
-
-kein Zeitlimit
-Fokus: korrekte Lösungen
-
-B. Speed Mode
-
-Zeitlimit pro Aufgabe
-Fokus: schnelle Antworten
-
-C. Mixed Mode
-
-Kombination
-
-D. Step Mode (Algebra)
-
-schrittweise Eingabe 8. Aufgaben-Generierung (Konkrete Spezifikation)
-
-8.1 Anforderungen
-Aufgaben müssen parametrisch generiert werden
-Parameter pro Level definiert (Zahlenbereich, Operationen)
-Keine identischen Aufgaben in einer Session
-8.2 Generierungs-Algorithmus
-
-```
-generate_algebra_task(level):
-  if level == 1: return f"{rand(1,10)}x + {rand(1,20)} = {rand(1,50)}"
-  if level == 2: return f"{rand(-5,5)}x + {rand(-20,20)} = {rand(-50,50)}"
-  if level == 3: return f"{rand(1,5)}x + {rand(1,5)}x + {rand(1,10)} = {rand(10,50)}"
-  ...
-
-  constraints:
-  - Lösung muss ganze Zahl oder einfacher Bruch sein
-  - Keine Division durch 0
-  - Zahlenbereich begrenzen
-```
-
-8.3 Validation
-
-- Generierte Aufgabe lösen
-- Falls kein einfache Lösung → verwerfen, neu generieren
-- Deduplizierung: In Session nicht zweimal die gleiche Aufgabe
-
-  8.4 Variationen
-  Algebraische Umformung generieren:
-
-```
-eq1 = "2x + 3 = 11"
-step1 = "2x = 8"        # Regel: beide Seiten -3
-step2 = "x = 4"         # Regel: beide Seiten ÷2
-```
-
-Fehlerhafte Schritte (für Valid/Invalid Aufgaben):
-
-```
-wrong1 = "2x = 8"        # Regel verletzt (nur eine Seite -3)
-wrong2 = "2x = 14"       # Vorzeichenfehler
-wrong3 = "x = 8"         # Zu großer Schritt
-```
-
-9. Feedback-System
-   9.1 Sofort-Feedback
-
-Nach jeder Aufgabe:
-
-korrekt/falsch
-richtige Lösung
-ggf. korrekter Umformungsschritt
-9.2 Fehlerfeedback (spezifisch pro Fehlertyp)
-
-Bei Fehlern konkrete Regelverletzung anzeigen:
-
-- Regelverletzung: „Die Operation muss auf BEIDEN Seiten erfolgen!"
-- Vorzeichenfehler: „Achtung: +3 wird zu -3 beim Verschieben!"
-- Unvollständig: „Klammer noch nicht vollständig aufgelöst."
-- Falsche Vereinfachung: „2x + x ergibt 3x, nicht 2x!"
-
-  9.3 Session-Feedback (Zusammenfassung)
-
-Nach Session anzeigen:
-
-- Genauigkeit: % richtig (z.B. 85%)
-- Durchschnittliche Antwortzeit (ms)
-- Schwachstellenanalyse: häufigste Fehlertypen
-- Level-Fortschritt: welche Level jetzt verfügbar
-
-10. Benutzeroberfläche (UX-Anforderungen)
-    minimale Latenz zwischen Aufgaben (<200ms)
-    Tastatureingabe priorisiert
-    keine unnötigen Animationen
-    klare, reduzierte Darstellung
-11. Technische Anforderungen
-    11.1 Architektur
-    Modular aufgebaut (Module unabhängig erweiterbar)
-    Trennung von:
-
-- Aufgabenlogik (Generator, Validierung)
-- Bewertungslogik (Scoring, Level-Anpassung)
-- Persistierung (Datenbank, Lokal-Storage)
-- UI (React/Vue, nur Daten empfangen)
-
-  11.2 Algebra-Engine (KONKRET)
-
-MUSS verwenden:
-
-- SymPy: Symbolische Verarbeitung, Äquivalenzprüfung
-- Parsing: SymPy.sympify() für Input-Parsing
-- Äquivalenztest: `simplify(eq1 - eq2) == 0`
-- AST-Struktur: SymPy-Expr für Regelvalidation
-
-Nicht-Ziel: Vollständiges CAS (SymPy reicht aus)
-
-11.3 Datenhaltung
-Speicherung (lokal oder Backend):
-
-```
-user/
-  session_history: [{date, module, accuracy, avg_time}, ...]
-  task_history: [{task_id, timestamp, correct, time_ms, error_type}, ...]
-  level_progress: {kopfrechnen: L2, brüche: L1, algebra: L3}
-```
-
-Deduplizierung:
-
-- Keine identischen Aufgaben in einer Session
-- Tracking: Hash(task_content) → task_id
-
-12. Erweiterbarkeit
-
-Das System muss später erweiterbar sein für:
-
-weitere mathematische Gebiete
-neue Aufgabentypen
-zusätzliche Metriken 13. Nicht-Ziele (wichtig zur Abgrenzung)
-kein Fokus auf komplexe Textaufgaben
-keine visuelle Spielerei / Gamification als Kernfeature
-kein vollständiges CAS (Computer Algebra System)
-Fazit
-
-Das System ist kein klassisches Quiz, sondern ein:
-
-adaptives, regelbasiertes Trainingssystem für mathematische Mikro-Skills
+Das System ist kein klassisches Quiz, sondern ein adaptives, regelbasiertes Trainingssystem fuer mathematische Mikro-Skills mit Fokus auf Lernfortschritt, Fehlerdiagnostik, schnelle Feedbackschleifen und rechtliche Mindestanforderungen fuer den Betrieb als Website in Deutschland.
