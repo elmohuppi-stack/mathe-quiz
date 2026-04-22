@@ -29,7 +29,11 @@ export default function TrainingPage() {
 
   useEffect(() => {
     const startTraining = async () => {
-      if (!token || !module || !["mental-math", "fractions", "algebra"].includes(module)) {
+      if (
+        !token ||
+        !module ||
+        !["mental-math", "fractions", "algebra"].includes(module)
+      ) {
         navigate("/dashboard");
         return;
       }
@@ -44,7 +48,9 @@ export default function TrainingPage() {
 
         setSession(response.data);
       } catch (err: any) {
-        setError(err.response?.data?.error || t("errors.general.internal_error"));
+        setError(
+          err.response?.data?.error || t("errors.general.internal_error"),
+        );
       } finally {
         setIsLoading(false);
       }
@@ -72,7 +78,9 @@ export default function TrainingPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
-          <h2 className="text-red-800 font-bold mb-2">{t("errors.general.internal_error")}</h2>
+          <h2 className="text-red-800 font-bold mb-2">
+            {t("errors.general.internal_error")}
+          </h2>
           <p className="text-red-700 mb-4">{error}</p>
           <button
             onClick={() => navigate("/dashboard")}
@@ -93,11 +101,29 @@ export default function TrainingPage() {
   const renderTraining = () => {
     switch (session.module) {
       case "mental-math":
-        return <MentalMathTraining session={session} level={level} onSessionEnd={handleSessionEnd} />;
+        return (
+          <MentalMathTraining
+            session={session}
+            level={level}
+            onSessionEnd={handleSessionEnd}
+          />
+        );
       case "fractions":
-        return <FractionsTraining session={session} level={level} onSessionEnd={handleSessionEnd} />;
+        return (
+          <FractionsTraining
+            session={session}
+            level={level}
+            onSessionEnd={handleSessionEnd}
+          />
+        );
       case "algebra":
-        return <AlgebraTraining session={session} level={level} onSessionEnd={handleSessionEnd} />;
+        return (
+          <AlgebraTraining
+            session={session}
+            level={level}
+            onSessionEnd={handleSessionEnd}
+          />
+        );
       default:
         return null;
     }

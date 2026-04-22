@@ -19,6 +19,17 @@ services:
       retries: 5
     restart: unless-stopped
 
+  validator:
+    build:
+      context: .
+      dockerfile: validator/Dockerfile
+    container_name: mathe-quiz-validator
+    environment:
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "${VALIDATOR_PORT:-3001}:3001"
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -29,11 +40,14 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-mathe_user}:${POSTGRES_PASSWORD:-mathe_pass}@postgres:5432/${POSTGRES_DB:-mathe_quiz}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      VALIDATOR_URL: ${VALIDATOR_URL:-http://validator:3001}
     ports:
       - "${API_PORT:-3032}:3000"
     depends_on:
       postgres:
         condition: service_healthy
+      validator:
+        condition: service_started
     restart: unless-stopped
 
   frontend:

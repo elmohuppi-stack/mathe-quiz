@@ -128,7 +128,8 @@ export default function MentalMathTraining({
     } catch (error: any) {
       setFeedback({
         type: "error",
-        message: error.response?.data?.error || t("errors.general.internal_error"),
+        message:
+          error.response?.data?.error || t("errors.general.internal_error"),
       });
     } finally {
       setIsSubmitting(false);
@@ -159,7 +160,9 @@ export default function MentalMathTraining({
   }
 
   if (!task) {
-    return <div className="text-red-500">{t("errors.general.internal_error")}</div>;
+    return (
+      <div className="text-red-500">{t("errors.general.internal_error")}</div>
+    );
   }
 
   return (

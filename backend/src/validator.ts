@@ -36,7 +36,7 @@ export interface StepValidationResult {
  */
 export async function validateExpression(
   expression: string,
-  variables: string[] = ["x"]
+  variables: string[] = ["x"],
 ): Promise<ExpressionValidationResult> {
   try {
     const response = await validatorClient.post<ExpressionValidationResult>(
@@ -44,7 +44,7 @@ export async function validateExpression(
       {
         expression,
         variables,
-      }
+      },
     );
     return response.data;
   } catch (error) {
@@ -63,7 +63,7 @@ export async function validateExpression(
 export async function validateEquation(
   left: string,
   right: string,
-  variables: string[] = ["x"]
+  variables: string[] = ["x"],
 ): Promise<EquationValidationResult> {
   try {
     const response = await validatorClient.post<EquationValidationResult>(
@@ -72,7 +72,7 @@ export async function validateEquation(
         left,
         right,
         variables,
-      }
+      },
     );
     return response.data;
   } catch (error) {
@@ -92,7 +92,7 @@ export async function validateEquation(
 export async function validateStep(
   current: string,
   proposed: string,
-  variables: string[] = ["x"]
+  variables: string[] = ["x"],
 ): Promise<StepValidationResult> {
   try {
     const response = await validatorClient.post<StepValidationResult>(
@@ -101,7 +101,7 @@ export async function validateStep(
         current,
         proposed,
         variables,
-      }
+      },
     );
     return response.data;
   } catch (error) {
@@ -121,17 +121,14 @@ export async function validateStep(
 export async function solveEquation(
   left: string,
   right: string,
-  variables: string[] = ["x"]
+  variables: string[] = ["x"],
 ): Promise<{ success: boolean; solutions: string[]; message: string }> {
   try {
-    const response = await validatorClient.post(
-      "/solve/equation",
-      {
-        left,
-        right,
-        variables,
-      }
-    );
+    const response = await validatorClient.post("/solve/equation", {
+      left,
+      right,
+      variables,
+    });
     return response.data;
   } catch (error) {
     console.error("Equation solving error:", error);

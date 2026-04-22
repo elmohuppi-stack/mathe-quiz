@@ -22,7 +22,7 @@ export async function saveAnswer(
   userAnswer: string,
   correctAnswer: string,
   timeTakenMs: number,
-  module: Module = "mental-math"
+  module: Module = "mental-math",
 ): Promise<AnswerSubmission> {
   let isCorrect = false;
 

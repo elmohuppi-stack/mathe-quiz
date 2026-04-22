@@ -44,7 +44,9 @@ export function DashboardPage() {
             <h3 className="text-xl font-bold mb-2">
               {t("modules.mental-math")}
             </h3>
-            <p className="text-gray-600 mb-4">{t("modules.mental-math_desc")}</p>
+            <p className="text-gray-600 mb-4">
+              {t("modules.mental-math_desc")}
+            </p>
             <button
               onClick={() => navigate("/training/mental-math")}
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"

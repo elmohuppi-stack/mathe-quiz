@@ -345,7 +345,11 @@ app.post(
         .parse(request.body);
 
       const { validateEquation } = await import("./validator.ts");
-      const result = await validateEquation(body.left, body.right, body.variables);
+      const result = await validateEquation(
+        body.left,
+        body.right,
+        body.variables,
+      );
 
       reply.send(result);
     } catch (error) {

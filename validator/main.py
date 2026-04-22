@@ -3,7 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 from sympy import symbols, sympify, solve, simplify, expand, factor, cancel
-from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+from sympy.parsing.sympy_parser import (
+    parse_expr,
+    standard_transformations,
+    implicit_multiplication_application,
+)
 from sympy.core.sympify import SympifyError
 
 app = FastAPI(title="Mathe Quiz Validator", version="1.0.0")
@@ -62,7 +66,9 @@ class StepValidation(BaseModel):
 def parse_math_expression(expr_str: str, variables: list[str] = ["x"]):
     """Parse and validate a mathematical expression"""
     try:
-        transformations = standard_transformations + (implicit_multiplication_application,)
+        transformations = standard_transformations + (
+            implicit_multiplication_application,
+        )
         expr = parse_expr(
             expr_str,
             local_dict={var: symbols(var) for var in variables},
@@ -185,7 +191,9 @@ async def validate_equation(data: Equation):
             )
 
         # Check equivalence
-        are_equiv, comp_err = are_expressions_equivalent(data.left, data.right, data.variables)
+        are_equiv, comp_err = are_expressions_equivalent(
+            data.left, data.right, data.variables
+        )
 
         if comp_err:
             return EquationValidation(
@@ -220,7 +228,9 @@ async def validate_equation(data: Equation):
         return EquationValidation(
             is_valid=True,
             are_equivalent=are_equiv,
-            message="Both sides are equivalent" if are_equiv else "Sides are not equivalent",
+            message=(
+                "Both sides are equivalent" if are_equiv else "Sides are not equivalent"
+            ),
             solution_left=solution_left,
             solution_right=solution_right,
         )
@@ -240,7 +250,9 @@ async def validate_step(data: Step):
     try:
         # Parse both expressions
         current_expr, current_err = parse_math_expression(data.current, data.variables)
-        proposed_expr, proposed_err = parse_math_expression(data.proposed, data.variables)
+        proposed_expr, proposed_err = parse_math_expression(
+            data.proposed, data.variables
+        )
 
         if current_err or proposed_err:
             return StepValidation(
@@ -251,7 +263,9 @@ async def validate_step(data: Step):
             )
 
         # Check if expressions are equivalent
-        are_equiv, comp_err = are_expressions_equivalent(data.current, data.proposed, data.variables)
+        are_equiv, comp_err = are_expressions_equivalent(
+            data.current, data.proposed, data.variables
+        )
 
         if comp_err:
             return StepValidation(
@@ -270,9 +284,11 @@ async def validate_step(data: Step):
             is_valid=are_equiv,
             are_equivalent=are_equiv,
             transformation_type=transformation,
-            message="Step is valid and algebraically correct"
-            if are_equiv
-            else "Step is not algebraically equivalent",
+            message=(
+                "Step is valid and algebraically correct"
+                if are_equiv
+                else "Step is not algebraically equivalent"
+            ),
         )
 
     except Exception as e:
