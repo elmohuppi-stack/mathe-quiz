@@ -5,7 +5,7 @@ WORKDIR /app
 COPY frontend/package*.json ./frontend/
 COPY package*.json ./
 
-RUN npm ci --workspace=frontend
+RUN npm install --workspace=frontend
 
 COPY frontend ./frontend
 

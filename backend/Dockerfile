@@ -5,7 +5,7 @@ WORKDIR /app
 COPY backend/package*.json ./backend/
 COPY package*.json ./
 
-RUN npm ci --workspace=backend
+RUN npm install --workspace=backend
 
 COPY backend ./backend
 
