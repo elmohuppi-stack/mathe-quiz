@@ -1,0 +1,25 @@
+{
+  "errors": {
+    "validation": {
+      "invalid_email": "Invalid email address",
+      "password_too_short": "Password must be at least 8 characters",
+      "required_field": "Required field is missing"
+    },
+    "auth": {
+      "user_exists": "User already exists with this email",
+      "invalid_credentials": "Invalid email or password",
+      "unauthorized": "Unauthorized: Please log in",
+      "token_invalid": "Invalid or expired token"
+    },
+    "general": {
+      "internal_error": "Internal server error",
+      "not_found": "Resource not found",
+      "bad_request": "Bad request"
+    }
+  },
+  "messages": {
+    "registration_success": "Registration successful",
+    "login_success": "Login successful",
+    "user_info": "User information retrieved successfully"
+  }
+}

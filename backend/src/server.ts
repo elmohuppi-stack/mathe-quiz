@@ -1,7 +1,9 @@
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCors from "@fastify/cors";
-import { registerUser, loginUser } from "./auth.ts";
+import { z } from "zod";
+import { registerUser, loginUser, AppError } from "./auth.ts";
+import { getTranslatorFromRequest } from "./i18n/useI18n.ts";
 import prisma from "./db.ts";
 
 const port = parseInt(process.env.PORT || "3000");
@@ -38,7 +40,22 @@ app.post("/auth/register", async (request, reply) => {
       user: { id: user.id, email: user.email },
     });
   } catch (error) {
-    reply.status(400).send({ error: (error as Error).message });
+    const t = getTranslatorFromRequest(request);
+    if (error instanceof AppError) {
+      reply.status(400).send({ error: t(error.errorKey, error.message) });
+    } else if (error instanceof z.ZodError) {
+      reply
+        .status(400)
+        .send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
+    } else {
+      reply
+        .status(400)
+        .send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+    }
   }
 });
 
@@ -52,7 +69,22 @@ app.post("/auth/login", async (request, reply) => {
       user: { id: user.id, email: user.email },
     });
   } catch (error) {
-    reply.status(401).send({ error: (error as Error).message });
+    const t = getTranslatorFromRequest(request);
+    if (error instanceof AppError) {
+      reply.status(401).send({ error: t(error.errorKey, error.message) });
+    } else if (error instanceof z.ZodError) {
+      reply
+        .status(400)
+        .send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
+    } else {
+      reply
+        .status(401)
+        .send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+    }
   }
 });
 

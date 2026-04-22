@@ -2,6 +2,19 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import prisma from "./db.ts";
 
+/**
+ * Custom error for app-specific errors with i18n support
+ */
+export class AppError extends Error {
+  constructor(
+    public errorKey: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AppError";
+  }
+}
+
 const RegisterSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -20,7 +33,7 @@ export async function registerUser(data: unknown) {
   });
 
   if (existingUser) {
-    throw new Error("User already exists");
+    throw new AppError("errors.auth.user_exists", "User already exists");
   }
 
   const hashedPassword = await bcrypt.hash(parsed.password, 10);
@@ -43,12 +56,18 @@ export async function loginUser(data: unknown) {
   });
 
   if (!user) {
-    throw new Error("Invalid credentials");
+    throw new AppError(
+      "errors.auth.invalid_credentials",
+      "Invalid credentials",
+    );
   }
 
   const isPasswordValid = await bcrypt.compare(parsed.password, user.password);
   if (!isPasswordValid) {
-    throw new Error("Invalid credentials");
+    throw new AppError(
+      "errors.auth.invalid_credentials",
+      "Invalid credentials",
+    );
   }
 
   return user;

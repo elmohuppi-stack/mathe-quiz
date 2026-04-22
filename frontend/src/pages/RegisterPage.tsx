@@ -42,7 +42,9 @@ export function RegisterPage() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Mathe-Quiz {t("auth.register")}</h1>
+          <h1 className="text-2xl font-bold">
+            Mathe-Quiz {t("auth.register")}
+          </h1>
           <LanguageSelector />
         </div>
         {error && <div className="text-red-600 mb-4">{error}</div>}
