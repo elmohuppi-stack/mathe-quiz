@@ -1,6 +1,19 @@
 # Implementierungsplan: Mathe-Quiz Webanwendung
 
-## 1. Zielbild
+## 1. Aktueller Stand
+
+Das Projekt befindet sich nicht mehr in der reinen Konzeptionsphase. Der aktuelle Stand umfasst bereits:
+
+- React-Frontend mit Login, Dashboard und Trainingsseiten
+- Fastify-Backend mit Auth, Sessions, Aufgaben-Generierung und Verlauf
+- PostgreSQL via Prisma
+- internen Algebra-Validator auf Basis von FastAPI und SymPy
+- drei lauffaehige Module: Algebra, Kopfrechnen und Brueche
+- Docker-Compose-Betrieb fuer die komplette lokale Entwicklungsumgebung
+
+Der momentane Stand auf Commit `239b7ae` ist ein funktionierender MVP-Kern mit offenen Ausbau- und Hardening-Themen.
+
+## 2. Zielbild
 
 Es entsteht eine responsive Webanwendung fuer mathematisches Training mit drei Produktzielen:
 
@@ -8,17 +21,17 @@ Es entsteht eine responsive Webanwendung fuer mathematisches Training mit drei P
 - didaktisch sauberes Feedback
 - messbarer Lernfortschritt pro Modul
 
-Die Architektur wird bewusst einfach gehalten:
+Die Architektur bleibt bewusst einfach:
 
 - React im Frontend
 - Node.js mit TypeScript als Haupt-API
-- SymPy nur fuer die algebraische Validierung, angebunden ueber einen internen Python-Service
+- SymPy nur fuer algebraische Validierung, angebunden ueber einen internen Python-Service
 - PostgreSQL als primaere Datenbank
 - Deployment auf dem bestehenden Hetzner-Multi-App-Server
 
 ---
 
-## 2. Verbindliche Architekturentscheidungen
+## 3. Verbindliche Architekturentscheidungen
 
 | Bereich             | Entscheidung                                | Begruendung                                                      |
 | ------------------- | ------------------------------------------- | ---------------------------------------------------------------- |
@@ -30,13 +43,13 @@ Die Architektur wird bewusst einfach gehalten:
 | Cache/Queue         | zunaechst ohne Redis, spaeter optional      | MVP erst mit moeglichst wenig Infrastruktur bewegen              |
 | Deployment          | Docker Compose + Host-Nginx auf Hetzner     | passt exakt zu deinem Multi-App-Standard                         |
 
-### 2.1 Architekturprinzip
+### 3.1 Architekturprinzip
 
 Node.js ist das fuehrende Backend. Der Python-Service ist kein zweites Produkt-Backend, sondern ausschliesslich eine interne Fachkomponente fuer Algebra.
 
-### 2.2 Was explizit nicht mehr Teil des Plans ist
+### 3.2 Was explizit nicht Teil des Plans ist
 
-Diese Optionen werden nicht weiter verfolgt:
+Diese Optionen werden weiterhin nicht verfolgt:
 
 - reines Python-Hauptbackend
 - SQLAlchemy als primaere ORM-Schicht
@@ -46,36 +59,32 @@ Diese Optionen werden nicht weiter verfolgt:
 
 ---
 
-## 3. Produktreihenfolge
+## 4. Produktreihenfolge
 
-Der MVP bleibt fachlich bei drei Modulen, aber technisch wird das Risiko gestaffelt umgesetzt.
+Die Reihenfolge der Umsetzung bleibt fachlich nachvollziehbar:
 
-### 3.1 Technischer MVP
-
-Zuerst wird Algebra Ende-zu-Ende gebaut, weil dort Parser, Schrittvalidierung und Fehlerklassifikation am schwierigsten sind.
-
-### 3.2 Produkt-MVP
-
-Sobald Algebra stabil laeuft, werden Kopfrechnen und Brueche auf derselben Plattform ergaenzt. Dadurch bleibt die Architektur einheitlich und die schwerste Domaenenlogik wird zuerst geloest.
+- Algebra wurde zuerst Ende-zu-Ende gebaut, weil dort Parser, Schrittvalidierung und Fehlerklassifikation am schwierigsten sind.
+- Danach wurden Kopfrechnen und Brueche auf derselben Plattform ergaenzt.
+- Die naechsten Schritte liegen nun vor allem in Adaption, Export, Pflichtseiten und Hardening.
 
 ---
 
-## 4. Ziel-Scope des MVP
+## 5. Ziel-Scope des MVP
 
-Zum MVP-Release muessen vorhanden sein:
+Der aktuelle Stand bezogen auf den Ziel-Scope ist:
 
-- Login und Benutzerkonto
-- Trainingsoberflaeche fuer Mobile und Desktop
-- Algebra vollstaendig
-- Kopfrechnen als direktes Antwortmodul
-- Brueche & Prozent als direktes Antwortmodul
-- adaptives Basis-Leveling
-- Session-Feedback
-- Dashboard mit Kernmetriken
-- Impressum und Datenschutzerklaerung
-- Deployment auf Hetzner unter eigener Frontend- und API-Subdomain
+- Login und Benutzerkonto: umgesetzt
+- Trainingsoberflaeche fuer Mobile und Desktop: umgesetzt, weiter polishbar
+- Algebra vollstaendig: umgesetzt
+- Kopfrechnen als direktes Antwortmodul: umgesetzt
+- Brueche und Prozent als direktes Antwortmodul: umgesetzt
+- adaptives Basis-Leveling: nur in Basisform vorhanden, noch ausbaubar
+- Session-Feedback: umgesetzt
+- Dashboard mit Kernmetriken: umgesetzt
+- Impressum und Datenschutzerklaerung: offen
+- Deployment auf Hetzner unter eigener Frontend- und API-Subdomain: vorbereitet, nicht final abgeschlossen
 
-Nicht Bestandteil des MVP:
+Nicht Bestandteil des MVP bleiben:
 
 - Lehrer- oder Klassenraumfunktionen
 - Mehrmandantenfaehigkeit
@@ -83,7 +92,7 @@ Nicht Bestandteil des MVP:
 - Offline-First
 - Gamification-Mechaniken als Kernsystem
 
-### 4.1 Rechtlicher Mindestumfang zum Livegang
+### 5.1 Rechtlicher Mindestumfang zum Livegang
 
 Vor dem produktiven Livegang in Deutschland muessen mindestens umgesetzt sein:
 
@@ -96,7 +105,7 @@ Vor dem produktiven Livegang in Deutschland muessen mindestens umgesetzt sein:
 
 ---
 
-## 5. Projektparameter
+## 6. Projektparameter
 
 | Parameter       | Wert                          |
 | --------------- | ----------------------------- |
@@ -107,11 +116,9 @@ Vor dem produktiven Livegang in Deutschland muessen mindestens umgesetzt sein:
 | API_PORT        | `3032`                        |
 | DEPLOY_PATH     | `/var/www/mathe-quiz`         |
 
-Wenn du spaeter eine kuerzere Domain wie `quiz.elmarhepp.de` moechtest, darf sich nur diese Parametertabelle aendern. Der Rest des Plans bleibt gleich.
-
 ---
 
-## 6. Zielarchitektur
+## 7. Zielarchitektur
 
 ```text
 Browser
@@ -122,7 +129,7 @@ Browser
       -> interner Validator-Service (FastAPI + SymPy)
 ```
 
-### 6.1 Verantwortlichkeiten
+### 7.1 Verantwortlichkeiten
 
 #### Frontend
 
@@ -137,7 +144,7 @@ Browser
 - Session-Steuerung
 - Aufgaben-Generierung
 - Antwortspeicherung
-- Metriken und Schwierigkeitsanpassung
+- Metriken und spaetere Schwierigkeitsanpassung
 - Ansteuerung des Algebra-Validator-Service
 
 #### Python-Validator-Service
@@ -151,65 +158,58 @@ Der Python-Service ist nur intern im Compose-Netzwerk erreichbar und bekommt kei
 
 ---
 
-## 7. Repository-Struktur
+## 8. Repository-Struktur
 
 ```text
 mathe-quiz/
 ├── frontend/
 │   ├── src/
-│   │   ├── app/
 │   │   ├── components/
-│   │   ├── features/
-│   │   │   ├── auth/
-│   │   │   ├── training/
-│   │   │   ├── dashboard/
-│   │   │   └── settings/
+│   │   ├── i18n/
 │   │   ├── lib/
-│   │   └── routes/
+│   │   ├── pages/
+│   │   └── store/
 │   ├── package.json
 │   └── vite.config.ts
 ├── backend/
-│   ├── src/
-│   │   ├── app.ts
-│   │   ├── server.ts
-│   │   ├── modules/
-│   │   │   ├── auth/
-│   │   │   ├── training/
-│   │   │   ├── stats/
-│   │   │   └── health/
-│   │   ├── services/
-│   │   ├── clients/
-│   │   │   └── validatorClient.ts
-│   │   ├── db/
-│   │   └── shared/
 │   ├── prisma/
 │   │   └── schema.prisma
+│   ├── src/
+│   │   ├── algebra-generator.ts
+│   │   ├── answers.ts
+│   │   ├── auth.ts
+│   │   ├── db.ts
+│   │   ├── server.ts
+│   │   ├── sessions.ts
+│   │   ├── tasks.ts
+│   │   ├── validator-client.ts
+│   │   └── validator.ts
 │   └── package.json
 ├── validator/
-│   ├── app/
+│   ├── main.py
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── docker-compose.yml
-├── docker-compose.prod.yml
-└── .github/workflows/
+├── README.md
+└── implementierungsplan.md
 ```
 
 ---
 
-## 8. Datenmodell
+## 9. Datenmodell
 
-### 8.1 Kern-Tabellen
+### 9.1 Kern-Tabellen
 
 | Tabelle         | Zweck                                           |
 | --------------- | ----------------------------------------------- |
 | users           | Benutzerkonto und Login                         |
-| user_profiles   | Profil, Praeferenzen, Trainingsziele            |
 | sessions        | Trainingssitzungen                              |
 | answers         | einzelne Antworten inklusive Zeit und Fehlertyp |
 | module_progress | aktueller Stand pro Modul                       |
-| task_patterns   | optionale Referenz auf Aufgabenmuster           |
 
-### 8.2 Minimales Prisma-Modell
+Das aktuell implementierte Prisma-Modell ist bewusst schlank und enthaelt keinen separaten `user_profiles`- oder `task_patterns`-Layer.
+
+### 9.2 Minimales Prisma-Modell
 
 ```text
 User 1---n Session
@@ -218,41 +218,40 @@ User 1---n ModuleProgress
 Session 1---n Answer
 ```
 
-### 8.3 Warum kein separates Task-Archiv im MVP
+### 9.3 Warum kein separates Task-Archiv im MVP
 
-Generierte Aufgaben werden zunaechst als JSON-Snapshot an der Antwort gespeichert. Das reduziert Komplexitaet und reicht fuer Replays, Debugging und Statistiken aus.
+Generierte Aufgaben werden aktuell als JSON-Snapshot an der Antwort gespeichert. Das reduziert Komplexitaet und reicht fuer Replays, Debugging und Statistiken aus.
 
 ---
 
-## 9. API-Schnittstellen
+## 10. API-Schnittstellen
 
-### 9.1 Auth
+### 10.1 Aktuell vorhandene Produkt-Endpunkte
 
 - `POST /auth/register`
 - `POST /auth/login`
-- `POST /auth/refresh`
-- `POST /auth/logout`
-
-### 9.2 Training
-
+- `GET /auth/me`
 - `POST /sessions/start`
-- `GET /tasks/next?module=algebra&mode=step`
+- `POST /tasks/next`
 - `POST /answers/submit`
-- `POST /sessions/:id/end`
+- `POST /algebra/validate-step`
+- `POST /sessions/end`
+- `GET /modules/progress/:module`
+- `GET /answers/history/:module`
 
-### 9.3 Dashboard
+### 10.2 Noch nicht umgesetzt, aber weiterhin im Plan
 
-- `GET /stats/overview`
-- `GET /stats/module/:module`
-- `GET /stats/session/:sessionId`
 - `GET /profile`
 - `PATCH /profile`
+- Export-Endpunkte fuer Benutzerdaten
 
-### 9.4 Interne Schnittstelle zum Validator
+### 10.3 Interne Schnittstelle zum Validator
 
-- `POST /validate/expression`
-- `POST /validate/equation`
-- `POST /validate/step`
+Der Validator ist intern ueber den Node-Client angebunden und uebernimmt:
+
+- Algebra-Aequivalenzpruefung
+- Ausdrucksvalidierung
+- Schrittvalidierung mit Fehlerklassifikation
 
 Beispielantwort des Validators:
 
@@ -268,9 +267,11 @@ Beispielantwort des Validators:
 
 ---
 
-## 10. Umsetzungsphasen
+## 11. Umsetzungsphasen
 
 ## Phase 1: Plattform und Grundgeruest
+
+Status: weitgehend abgeschlossen
 
 ### Inhalte
 
@@ -298,6 +299,8 @@ Die Anwendung startet lokal vollstaendig, Nutzer koennen sich registrieren, und 
 
 ## Phase 2: Algebra Ende-zu-Ende
 
+Status: abgeschlossen
+
 ### Inhalte
 
 - internen Validator-Service mit SymPy aufsetzen
@@ -322,27 +325,30 @@ Ein Benutzer kann eine Algebra-Session vollstaendig absolvieren und erhaelt korr
 
 ## Phase 3: Weitere Module und Basis-Adaption
 
+Status: in grossem Teil umgesetzt
+
 ### Inhalte
 
 - Kopfrechnen-Modul ergaenzen
-- Brueche-&-Prozent-Modul ergaenzen
+- Brueche-und-Prozent-Modul ergaenzen
 - adaptive Logik auf Basis von Antwortzeit und Korrektheit einfuehren
 - Wiederholungslogik fuer Fehler und langsame Muster ergaenzen
 
 ### Ergebnis
 
-Alle drei MVP-Module laufen auf derselben Plattform, und die Schwierigkeit reagiert auf das Verhalten des Benutzers.
+Alle drei MVP-Module laufen auf derselben Plattform. Die adaptive Logik ist bislang einfacher als urspruenglich geplant und bleibt ein offener Ausbaupunkt.
 
 ### Exit-Kriterien
 
 - drei Module sind im UI auswaehlbar
 - pro Modul wird Fortschritt gespeichert
-- falsche Aufgabenmuster werden erneut priorisiert
-- Levelwechsel sind nachvollziehbar
+- Levelwechsel und Wiederholungslogik koennen als naechster Schritt vertieft werden
 
 ---
 
 ## Phase 4: Dashboard, Profil, Export
+
+Status: teilweise umgesetzt
 
 ### Inhalte
 
@@ -354,19 +360,21 @@ Alle drei MVP-Module laufen auf derselben Plattform, und die Schwierigkeit reagi
 
 ### Ergebnis
 
-Der Benutzer sieht seinen Fortschritt und kann seine Daten exportieren.
+Der Benutzer sieht bereits seinen Fortschritt und die Verlaufshistorie pro Modul. Profilbearbeitung und Export sind noch offen.
 
 ### Exit-Kriterien
 
 - Uebersicht mit Genauigkeit und Antwortzeit vorhanden
-- Session-Details abrufbar
-- Profil editierbar
-- Export funktioniert
-- Benutzerkoennen ihre Kernprofildaten einsehen und exportieren
+- Modulverlauf und letzte Aufgaben sind sichtbar
+- Profil editierbar: offen
+- Export funktioniert: offen
+- Benutzer koennen ihre Kernprofildaten exportieren: offen
 
 ---
 
 ## Phase 5: Responsive UX und Hardening
+
+Status: teilweise umgesetzt
 
 ### Inhalte
 
@@ -376,12 +384,12 @@ Der Benutzer sieht seinen Fortschritt und kann seine Daten exportieren.
 - Ladezeiten und Interaktion optimieren
 - Tests fuer Kernpfade ergaenzen
 - Impressum und Datenschutzerklaerung als statische oder CMS-gestuetzte Seiten integrieren
-- Footer und Routing fuer Pflichtseiten ergänzen
+- Footer und Routing fuer Pflichtseiten ergaenzen
 - Cookie- und Tracking-Konzept fuer den MVP festlegen
 
 ### Ergebnis
 
-Die Anwendung ist stabil, gut bedienbar und fuer den ersten echten Einsatz geeignet.
+Die Anwendung ist deutlich stabiler und besser bedienbar als in der Startphase. Vor dem ersten echten Livegang fehlen aber noch rechtliche Seiten, weitere Tests und letzter UX-Feinschliff.
 
 ### Exit-Kriterien
 
@@ -395,6 +403,8 @@ Die Anwendung ist stabil, gut bedienbar und fuer den ersten echten Einsatz geeig
 
 ## Phase 6: Hetzner-Deployment und Betrieb
 
+Status: vorbereitet, nicht abgeschlossen
+
 ### Inhalte
 
 - Produktions-Compose nach Hetzner-Standard erstellen
@@ -406,7 +416,7 @@ Die Anwendung ist stabil, gut bedienbar und fuer den ersten echten Einsatz geeig
 
 ### Ergebnis
 
-Die App laeuft unter deinen Subdomains auf dem bestehenden Hetzner-Server.
+Die App kann lokal vollstaendig laufen. Der finale produktive Rollout unter den Hetzner-Subdomains bleibt der naechste Infrastrukturschritt.
 
 ### Exit-Kriterien
 
@@ -418,7 +428,7 @@ Die App laeuft unter deinen Subdomains auf dem bestehenden Hetzner-Server.
 
 ---
 
-## 11. Hetzner-Deployment-Standard fuer dieses Projekt
+## 12. Hetzner-Deployment-Standard fuer dieses Projekt
 
 Fuer dieses Projekt gilt verbindlich der Standard aus der Deployment-Vorlage:
 
@@ -428,7 +438,7 @@ Fuer dieses Projekt gilt verbindlich der Standard aus der Deployment-Vorlage:
 - Compose bindet nur an `127.0.0.1:3031` und `127.0.0.1:3032`
 - Validator-Service bleibt intern ohne oeffentliche Portfreigabe
 
-### 11.1 Erwartete Compose-Konvention
+### 12.1 Erwartete Compose-Konvention
 
 ```yaml
 services:
@@ -445,7 +455,7 @@ services:
       - "8001"
 ```
 
-### 11.2 CI/CD-Konvention
+### 12.2 CI/CD-Konvention
 
 Deployment-Zielpfad in GitHub Actions:
 
@@ -458,45 +468,49 @@ docker compose exec api npx prisma migrate deploy
 
 ---
 
-## 12. Lokale Entwicklung
+## 13. Lokale Entwicklung
 
-### 12.1 Empfohlener lokaler Workflow
+### 13.1 Empfohlener lokaler Workflow
 
 ```bash
-# Terminal 1
-cd frontend
 npm install
-npm run dev
 
-# Terminal 2
-cd backend
-npm install
-npm run dev
+# Frontend
+npm run dev --workspace=frontend
 
-# Terminal 3
+# Backend
+npm run dev --workspace=backend
+
+# Validator
 cd validator
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8001
+python main.py
 ```
 
-### 12.2 Alternativ per Docker Compose
+### 13.2 Alternativ per Docker Compose
 
-Lokales Compose ist erlaubt, aber kein Muss. Fuer reine Frontend- oder API-Arbeit soll der direkte Dev-Workflow bevorzugt werden.
+Die aktuell praktischste lokale Variante ist:
+
+```bash
+docker compose up -d --build
+```
+
+Fuer reine Frontend- oder API-Arbeit kann weiterhin der direkte Dev-Workflow genutzt werden.
 
 ---
 
-## 13. Qualitaets- und Sicherheitsanforderungen
+## 14. Qualitaets- und Sicherheitsanforderungen
 
-### 13.1 Qualitaet
+### 14.1 Qualitaet
 
 - Typisierung in Frontend und Backend
-- automatisierte Tests fuer Login, Taskfluss und Algebra-Validierung
+- automatisierte Tests fuer Generatoren, Algebra-Validierung und ausgewaehlte Frontend-Flows
 - klare Fehlercodes vom Validator
 - Healthchecks fuer API und Validator
 
-### 13.2 Sicherheit
+### 14.2 Sicherheit
 
 - JWT mit sinnvoller Ablaufzeit
 - Passwort-Hashing mit bcrypt oder argon2
@@ -504,7 +518,7 @@ Lokales Compose ist erlaubt, aber kein Muss. Fuer reine Frontend- oder API-Arbei
 - Secrets nur ueber Environment-Variablen
 - serverseitige Validierung aller Nutzereingaben
 
-### 13.3 Datenschutz und Compliance
+### 14.3 Datenschutz und Compliance
 
 - standardmaessig keine nicht notwendigen Cookies oder Tracker im MVP
 - falls spaeter Analytics oder Marketing-Tools eingesetzt werden, nur mit Einwilligungsmechanismus
@@ -515,31 +529,12 @@ Lokales Compose ist erlaubt, aber kein Muss. Fuer reine Frontend- oder API-Arbei
 
 ---
 
-## 14. Risiken und Gegenmassnahmen
+## 15. Risiken und Gegenmassnahmen
 
-| Risiko                                          | Bedeutung             | Gegenmassnahme                                                       |
-| ----------------------------------------------- | --------------------- | -------------------------------------------------------------------- |
-| Algebra-Validierung wird komplexer als erwartet | Gefahr fuer Zeitplan  | Algebra zuerst bauen, andere Module spaeter ergaenzen                |
-| Mobile Eingabe ist zu umstaendlich              | schlechte Nutzbarkeit | fruehe mobile Tests und einfache Input-Syntax                        |
-| Adaptionslogik fuehlt sich unfair an            | falsches Lerngefuehl  | konservative MVP-Logik, Level-Abstieg erst nach Wiederholungsfehlern |
-| Zu viel Infrastruktur im MVP                    | langsamer Start       | Redis und weitere Services erst spaeter hinzufuegen                  |
-
----
-
-## 15. Reihenfolge der ersten Implementierung
-
-Die konkrete Bau-Reihenfolge sollte so aussehen:
-
-1. Fastify-API mit Auth und Prisma
-2. React-Frontend mit Login und Trainingsshell
-3. SymPy-Validator-Service
-4. Algebra-Ende-zu-Ende
-5. Kopfrechnen und Brueche
-6. Dashboard und Export
-7. Hetzner-Deployment
-
----
-
-## 16. Fazit
-
-Der Plan ist jetzt auf eine einzige Zielarchitektur festgezogen: React im Frontend, Node.js als Hauptbackend, SymPy als interne Fachkomponente und Deployment nach deinem bestehenden Hetzner-Multi-App-Standard.
+| Risiko                                                         | Bedeutung | Gegenmassnahme                                                               |
+| -------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------- |
+| Algebra-Validierung liefert didaktisch falsche Rueckmeldungen  | hoch      | Regressionstests, reale Beispielfaelle und schmale Validator-Aenderungen     |
+| Frontend-Effects oder Session-Flows erzeugen Request-Schleifen | hoch      | kleine isolierte Komponenten, Build-Pruefungen und gezielte Regressionstests |
+| Dashboard-Metriken laufen von gespeicherten Antworten weg      | mittel    | Modulfortschritt konsequent aus persisted answers synchronisieren            |
+| Docker-Startprobleme maskieren Produktfehler                   | mittel    | Healthchecks, Build-Validierung und direkte Container-Logs nutzen            |
+| Rechtliche Pflichtseiten verzoegern den Livegang               | hoch      | fruehzeitig als eigener Arbeitsblock vor Produktiv-Rollout einplanen         |
