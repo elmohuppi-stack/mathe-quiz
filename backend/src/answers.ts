@@ -12,6 +12,62 @@ export interface AnswerSubmission {
   timeTakenMs: number;
 }
 
+export interface ModuleHistoryStep {
+  id: string;
+  sessionId: string;
+  taskId: string;
+  createdAt: string;
+  sessionStartedAt: string;
+  currentEquation: string;
+  proposedStep: string;
+  expectedFirstStep: string;
+  transformationType: string | null;
+  userAnswer: string;
+  isCorrect: boolean;
+  errorType: string | null;
+  timeTakenMs: number;
+}
+
+export interface ModuleHistorySummary {
+  module: Module;
+  totalSubmissions: number;
+  correctSubmissions: number;
+  accuracy: number;
+  avgTimeMs: number;
+  recentSteps: ModuleHistoryStep[];
+}
+
+function extractAlgebraTaskData(taskData: unknown): {
+  currentEquation: string;
+  proposedStep: string;
+  expectedFirstStep: string;
+  transformationType: string | null;
+} {
+  if (!taskData || typeof taskData !== "object" || Array.isArray(taskData)) {
+    return {
+      currentEquation: "",
+      proposedStep: "",
+      expectedFirstStep: "",
+      transformationType: null,
+    };
+  }
+
+  const data = taskData as Record<string, unknown>;
+
+  return {
+    currentEquation:
+      typeof data.currentEquation === "string" ? data.currentEquation : "",
+    proposedStep:
+      typeof data.proposedStep === "string" ? data.proposedStep : "",
+    expectedFirstStep:
+      typeof data.expectedFirstStep === "string" ? data.expectedFirstStep : "",
+    transformationType:
+      typeof data.transformationType === "string"
+        ? data.transformationType
+        : null,
+  };
+}
+
 /**
  * Save an answer to database
  */
@@ -143,7 +199,7 @@ function groupErrors(
  */
 export async function getUserAnswerHistory(
   userId: string,
-  module: string,
+  module: Module,
   limit = 50,
 ) {
   const answers = await prisma.answer.findMany({
@@ -161,4 +217,97 @@ export async function getUserAnswerHistory(
   });
 
   return answers;
+}
+
+export async function getUserModuleHistory(
+  userId: string,
+  module: Module,
+  limit = 24,
+): Promise<ModuleHistorySummary> {
+  const where = {
+    userId,
+    session: {
+      module,
+    },
+  };
+
+  const [recentAnswers, totalSubmissions, correctSubmissions, aggregates]: [
+    Array<{
+      id: string;
+      sessionId: string;
+      taskId: string;
+      taskData: unknown;
+      userAnswer: string;
+      isCorrect: boolean;
+      errorType: string | null;
+      timeTaken: number;
+      createdAt: Date;
+      session: {
+        startedAt: Date;
+      };
+    }>,
+    number,
+    number,
+    { _avg: { timeTaken: number | null } },
+  ] = await Promise.all([
+    prisma.answer.findMany({
+      where,
+      include: {
+        session: {
+          select: {
+            startedAt: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+    }),
+    prisma.answer.count({ where }),
+    prisma.answer.count({
+      where: {
+        ...where,
+        isCorrect: true,
+      },
+    }),
+    prisma.answer.aggregate({
+      where,
+      _avg: {
+        timeTaken: true,
+      },
+    }),
+  ]);
+
+  const recentSteps = recentAnswers.map(
+    (answer: (typeof recentAnswers)[number]) => {
+      const taskData = extractAlgebraTaskData(answer.taskData);
+
+      return {
+        id: answer.id,
+        sessionId: answer.sessionId,
+        taskId: answer.taskId,
+        createdAt: answer.createdAt.toISOString(),
+        sessionStartedAt: answer.session.startedAt.toISOString(),
+        currentEquation: taskData.currentEquation,
+        proposedStep: taskData.proposedStep || answer.userAnswer,
+        expectedFirstStep: taskData.expectedFirstStep,
+        transformationType: taskData.transformationType,
+        userAnswer: answer.userAnswer,
+        isCorrect: answer.isCorrect,
+        errorType: answer.errorType,
+        timeTakenMs: answer.timeTaken,
+      };
+    },
+  );
+
+  return {
+    module,
+    totalSubmissions,
+    correctSubmissions,
+    accuracy:
+      totalSubmissions > 0 ? (correctSubmissions / totalSubmissions) * 100 : 0,
+    avgTimeMs: Math.round(aggregates._avg.timeTaken ?? 0),
+    recentSteps,
+  };
 }

@@ -6,7 +6,11 @@ import { registerUser, loginUser, AppError } from "./auth.js";
 import { getTranslatorFromRequest } from "./i18n/useI18n.js";
 import { generateTask, Module } from "./tasks.js";
 import { startSession, endSession, getModuleProgress } from "./sessions.js";
-import { saveAnswer, getSessionStats } from "./answers.js";
+import {
+  saveAnswer,
+  getSessionStats,
+  getUserModuleHistory,
+} from "./answers.js";
 import { validateAlgebraStep, classifyError } from "./validator-client.js";
 import prisma from "./db.js";
 
@@ -296,6 +300,8 @@ app.post(
             currentEquation: body.currentEquation,
             proposedStep: body.proposedStep,
             expectedFirstStep: body.expectedFirstStep,
+            transformationType: stepValidation.transformation_type,
+            isEquivalent: stepValidation.are_equivalent,
           },
           userAnswer: body.proposedStep,
           isCorrect: stepValidation.is_valid,
@@ -327,6 +333,46 @@ app.post(
         });
       } else {
         console.error("Algebra step validation error:", error);
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+      }
+    }
+  },
+);
+
+// Get persisted answer history for a module
+app.get(
+  "/answers/history/:module",
+  { onRequest: [authenticate] },
+  async (request, reply) => {
+    try {
+      const params = z
+        .object({
+          module: z.enum(["mental-math", "fractions", "algebra"]),
+        })
+        .parse(request.params);
+
+      const query = z
+        .object({
+          limit: z.coerce.number().int().min(1).max(100).default(24),
+        })
+        .parse(request.query ?? {});
+
+      const history = await getUserModuleHistory(
+        getRequestUser(request).id,
+        params.module as Module,
+        query.limit,
+      );
+
+      reply.send(history);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
+      } else {
         reply.status(500).send({
           error: t("errors.general.internal_error", (error as Error).message),
         });

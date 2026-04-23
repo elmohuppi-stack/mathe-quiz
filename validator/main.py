@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 import os
 from sympy import symbols, sympify, solve, simplify, expand, factor, cancel
 from sympy.parsing.sympy_parser import (
@@ -42,8 +43,8 @@ class Step(BaseModel):
 class ExpressionValidation(BaseModel):
     is_valid: bool
     message: str
-    simplified: str = None
-    error_code: str = None
+    simplified: Optional[str] = None
+    error_code: Optional[str] = None
 
 
 class EquationValidation(BaseModel):
@@ -52,15 +53,15 @@ class EquationValidation(BaseModel):
     message: str
     solution_left: list[str] = []
     solution_right: list[str] = []
-    error_code: str = None
+    error_code: Optional[str] = None
 
 
 class StepValidation(BaseModel):
     is_valid: bool
     are_equivalent: bool
-    transformation_type: str = None
+    transformation_type: Optional[str] = None
     message: str
-    error_code: str = None
+    error_code: Optional[str] = None
 
 
 def parse_math_expression(expr_str: str, variables: list[str] = ["x"]):
@@ -164,10 +165,53 @@ def are_equations_equivalent(eq1: str, eq2: str, variables: list[str] = ["x"]):
         return False, f"comparison_error: {str(e)}"
 
 
+def count_variable_occurrences(expr_str: str, variable: str = "x"):
+    return expr_str.replace(" ", "").count(variable)
+
+
+def identify_expression_rewrite(
+    current_str: str,
+    proposed_str: str,
+    current_expr,
+    proposed_expr,
+    variable: str = "x",
+):
+    """Classify a one-sided rewrite when the opposite side stays unchanged."""
+    current_clean = current_str.replace(" ", "")
+    proposed_clean = proposed_str.replace(" ", "")
+
+    if current_clean == proposed_clean:
+        return None
+
+    if simplify(current_expr - proposed_expr) != 0:
+        return None
+
+    if "(" in current_clean and "(" not in proposed_clean:
+        return "distributive_law"
+
+    if count_variable_occurrences(current_clean, variable) > count_variable_occurrences(
+        proposed_clean, variable
+    ):
+        return "combine_like_terms"
+
+    if proposed_clean.count("+") + proposed_clean.count("-") < current_clean.count(
+        "+"
+    ) + current_clean.count("-"):
+        return "simplification"
+
+    return "equivalent_form"
+
+
 def identify_transformation(current: str, proposed: str, variables: list[str] = ["x"]):
     """Identify what mathematical transformation was applied"""
     try:
         if "=" in current and "=" in proposed:
+            current_left_str, current_right_str = [
+                part.strip() for part in current.split("=")
+            ]
+            proposed_left_str, proposed_right_str = [
+                part.strip() for part in proposed.split("=")
+            ]
             curr_left, curr_right, current_err = parse_equation(current, variables)
             prop_left, prop_right, proposed_err = parse_equation(proposed, variables)
 
@@ -181,21 +225,43 @@ def identify_transformation(current: str, proposed: str, variables: list[str] = 
                     return "add_both_sides", None
                 return "subtract_both_sides", None
 
-            if (
-                curr_left != 0
-                and curr_right != 0
-                and prop_left != 0
-                and prop_right != 0
-            ):
+            if curr_left == 0 or curr_right == 0:
+                pass
+            else:
                 try:
                     ratio_left = simplify(prop_left / curr_left)
                     ratio_right = simplify(prop_right / curr_right)
                     if ratio_left == ratio_right and ratio_left != 1:
-                        if ratio_left.is_number and ratio_left.is_fraction:
-                            return "divide_both_sides", None
-                        return "multiply_both_sides", None
+                        if ratio_left.is_number:
+                            ratio_magnitude = simplify(abs(ratio_left))
+                            if ratio_magnitude.is_number and ratio_magnitude < 1:
+                                return "divide_both_sides", None
+                            return "multiply_both_sides", None
                 except Exception:
                     pass
+
+            variable = variables[0] if variables else "x"
+            if simplify(curr_right - prop_right) == 0:
+                left_rewrite = identify_expression_rewrite(
+                    current_left_str,
+                    proposed_left_str,
+                    curr_left,
+                    prop_left,
+                    variable,
+                )
+                if left_rewrite:
+                    return left_rewrite, None
+
+            if simplify(curr_left - prop_left) == 0:
+                right_rewrite = identify_expression_rewrite(
+                    current_right_str,
+                    proposed_right_str,
+                    curr_right,
+                    prop_right,
+                    variable,
+                )
+                if right_rewrite:
+                    return right_rewrite, None
 
             return "other_transformation", None
 
@@ -377,15 +443,24 @@ async def validate_step(data: Step):
             data.current, data.proposed, data.variables
         )
 
+        is_single_step = are_equiv and transformation != "other_transformation"
+        message = "Step is not algebraically equivalent"
+        error_code = None
+
+        if are_equiv and transformation == "other_transformation":
+            message = (
+                "Step is algebraically equivalent but combines multiple transformations"
+            )
+            error_code = "too_big_step"
+        elif is_single_step:
+            message = "Step is valid and algebraically correct"
+
         return StepValidation(
-            is_valid=are_equiv,
+            is_valid=is_single_step,
             are_equivalent=are_equiv,
             transformation_type=transformation,
-            message=(
-                "Step is valid and algebraically correct"
-                if are_equiv
-                else "Step is not algebraically equivalent"
-            ),
+            message=message,
+            error_code=error_code or trans_err,
         )
 
     except Exception as e:

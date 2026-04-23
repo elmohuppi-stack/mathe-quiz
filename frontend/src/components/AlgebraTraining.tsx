@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "../i18n/useTranslation";
 import api from "../lib/api";
+import { resolveAlgebraStepFlowOutcome } from "./algebraStepFlow";
 
 function normalizeAlgebraSide(side: string): string {
   return side
@@ -40,6 +41,11 @@ function parseLinearSide(side: string): {
   };
 }
 
+function isFractionVariableSide(side: string): boolean {
+  const normalized = normalizeAlgebraSide(side);
+  return /^[+-]?(?:\d+)?x\/\d+$/.test(normalized);
+}
+
 function deriveCurrentRule(
   equation: string,
   fallbackRule?: string,
@@ -77,6 +83,10 @@ function deriveCurrentRule(
     }
   }
 
+  if (leftHasVariable && !rightHasVariable && isFractionVariableSide(left)) {
+    return "multiply_both_sides";
+  }
+
   if (rightLinear && !leftHasVariable) {
     if (rightLinear.constant !== 0) {
       return rightLinear.constant > 0
@@ -86,6 +96,10 @@ function deriveCurrentRule(
     if (Math.abs(rightLinear.coefficient) !== 1) {
       return "divide_both_sides";
     }
+  }
+
+  if (rightHasVariable && !leftHasVariable && isFractionVariableSide(right)) {
+    return "multiply_both_sides";
   }
 
   if (leftHasVariable && rightHasVariable) {
@@ -236,31 +250,36 @@ export default function AlgebraTraining({
 
       setStepValidation(response.data);
 
-      if (response.data.isValid && response.data.isEquivalent) {
-        // Step is correct
-        setFeedback({
-          type: "success",
-          message: "✓ " + t("training.correct"),
-        });
+      const outcome = resolveAlgebraStepFlowOutcome(
+        response.data,
+        userStep,
+        task.correctAnswer,
+        t,
+      );
 
-        // Add step to history
+      if (response.data.isValid && response.data.isEquivalent) {
         const newSteps = [...steps, userStep];
         setSteps(newSteps);
 
-        // Check if we reached the final answer
-        if (
-          userStep.trim().replace(/\s/g, "") ===
-          task.correctAnswer.replace(/\s/g, "")
-        ) {
-          // Task complete
+        if (outcome.shouldIncrementCorrectCount) {
           setCorrectCount((prev) => prev + 1);
+        }
+
+        if (outcome.shouldIncrementTaskCount) {
           setTaskCount((prev) => prev + 1);
+        }
+
+        setFeedback({
+          type: outcome.feedbackType,
+          message: outcome.feedbackMessage,
+        });
+
+        if (outcome.isTaskComplete) {
           setFeedback({
-            type: "success",
-            message: "🎉 " + t("training.task_complete"),
+            type: outcome.feedbackType,
+            message: outcome.feedbackMessage,
           });
 
-          // Load next task after 2 seconds
           setTimeout(() => {
             const loadNextTask = async () => {
               try {
@@ -286,25 +305,19 @@ export default function AlgebraTraining({
             };
             loadNextTask();
           }, 2000);
-        } else {
-          // More steps needed
+        } else if (outcome.shouldAdvanceEquation) {
           setCurrentEquation(userStep);
           setUserStep("");
           setStepStartTime(Date.now());
-          setFeedback({
-            type: "info",
-            message: t("training.continue_steps"),
-          });
         }
       } else {
-        // Step is invalid - show error classification
-        setTaskCount((prev) => prev + 1);
-        const errorMessage = response.data.errorDescription
-          ? t(response.data.errorDescription)
-          : t("training.incorrect");
+        if (outcome.shouldIncrementTaskCount) {
+          setTaskCount((prev) => prev + 1);
+        }
+
         setFeedback({
-          type: "error",
-          message: errorMessage,
+          type: outcome.feedbackType,
+          message: outcome.feedbackMessage,
         });
       }
     } catch (error: any) {
