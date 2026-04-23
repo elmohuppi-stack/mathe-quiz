@@ -7,6 +7,7 @@ import { getTranslatorFromRequest } from "./i18n/useI18n.js";
 import { generateTask, Module } from "./tasks.js";
 import { startSession, endSession, getModuleProgress } from "./sessions.js";
 import { saveAnswer, getSessionStats } from "./answers.js";
+import { validateAlgebraStep, classifyError } from "./validator-client.js";
 import prisma from "./db.js";
 
 const port = parseInt(process.env.PORT || "3000");
@@ -246,6 +247,86 @@ app.post(
           error: t("errors.validation.required_field", "Validation failed"),
         });
       } else {
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+      }
+    }
+  },
+);
+
+// Validate an algebra step (step-by-step training)
+app.post(
+  "/algebra/validate-step",
+  { onRequest: [authenticate] },
+  async (request, reply) => {
+    try {
+      const body = z
+        .object({
+          sessionId: z.string(),
+          taskId: z.string(),
+          currentEquation: z.string(), // The equation at this step
+          proposedStep: z.string(), // User's proposed next step
+          expectedFirstStep: z.string(), // The expected correct first step
+          timeTakenMs: z.number().min(0),
+        })
+        .parse(request.body);
+
+      const userId = getRequestUser(request).id;
+
+      // Validate the step using SymPy validator
+      const stepValidation = await validateAlgebraStep({
+        current: body.currentEquation,
+        proposed: body.proposedStep,
+        variables: ["x"],
+      });
+
+      // Classify error if not correct
+      const errorClass = !stepValidation.is_valid
+        ? classifyError(body.currentEquation, body.proposedStep, stepValidation)
+        : null;
+
+      // Save the submission to database
+      await prisma.answer.create({
+        data: {
+          userId,
+          sessionId: body.sessionId,
+          taskId: body.taskId,
+          taskData: {
+            currentEquation: body.currentEquation,
+            proposedStep: body.proposedStep,
+            expectedFirstStep: body.expectedFirstStep,
+          },
+          userAnswer: body.proposedStep,
+          isCorrect: stepValidation.is_valid,
+          timeTaken: body.timeTakenMs,
+          errorType: errorClass?.type || null,
+        },
+      });
+
+      // Check if the step matches the expected first step
+      const isExactMatch =
+        body.proposedStep.trim().replace(/\s/g, "") ===
+        body.expectedFirstStep.trim().replace(/\s/g, "");
+
+      reply.send({
+        isValid: stepValidation.is_valid,
+        isEquivalent: stepValidation.are_equivalent,
+        isExactMatch,
+        transformationType: stepValidation.transformation_type,
+        message: stepValidation.message,
+        errorType: errorClass?.type,
+        errorDescription: errorClass?.description,
+        errorSeverity: errorClass?.severity,
+      });
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
+      } else {
+        console.error("Algebra step validation error:", error);
         reply.status(500).send({
           error: t("errors.general.internal_error", (error as Error).message),
         });
