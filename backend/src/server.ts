@@ -235,6 +235,7 @@ app.post(
           correctAnswer: z.string(),
           timeTakenMs: z.number().min(0),
           module: z.enum(["mental-math", "fractions", "algebra"]),
+          taskData: z.record(z.unknown()).optional(),
         })
         .parse(request.body);
 
@@ -246,6 +247,7 @@ app.post(
         body.correctAnswer,
         body.timeTakenMs,
         body.module as Module,
+        body.taskData,
       );
 
       reply.send(result);

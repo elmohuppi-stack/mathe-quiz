@@ -5,9 +5,14 @@ import { useTranslation } from "../i18n/useTranslation";
 import { LanguageSelector } from "../components/LanguageSelector";
 import api from "../lib/api";
 
-interface AlgebraHistoryStep {
+type ModuleKey = "mental-math" | "fractions" | "algebra";
+
+interface ModuleHistoryStep {
   id: string;
   createdAt: string;
+  prompt: string;
+  response: string;
+  expectedAnswer: string;
   currentEquation: string;
   proposedStep: string;
   transformationType: string | null;
@@ -15,15 +20,14 @@ interface AlgebraHistoryStep {
   timeTakenMs: number;
 }
 
-interface AlgebraHistorySummary {
+interface ModuleHistorySummary {
+  module: ModuleKey;
   totalSubmissions: number;
   correctSubmissions: number;
   accuracy: number;
   avgTimeMs: number;
-  recentSteps: AlgebraHistoryStep[];
+  recentSteps: ModuleHistoryStep[];
 }
-
-type ModuleKey = "mental-math" | "fractions" | "algebra";
 
 interface ModuleProgressSummary {
   module: ModuleKey;
@@ -60,8 +64,10 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const { t } = useTranslation();
-  const [algebraHistory, setAlgebraHistory] =
-    useState<AlgebraHistorySummary | null>(null);
+  const [selectedHistoryModule, setSelectedHistoryModule] =
+    useState<ModuleKey>("mental-math");
+  const [moduleHistory, setModuleHistory] =
+    useState<ModuleHistorySummary | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
   const [moduleProgress, setModuleProgress] = useState<
@@ -96,19 +102,19 @@ export function DashboardPage() {
 
     let isCancelled = false;
 
-    const loadAlgebraHistory = async () => {
+    const loadModuleHistory = async () => {
       try {
         setIsHistoryLoading(true);
         setHistoryError("");
-        const response = await api.get<AlgebraHistorySummary>(
-          "/answers/history/algebra",
+        const response = await api.get<ModuleHistorySummary>(
+          `/answers/history/${selectedHistoryModule}`,
           {
             params: { limit: 18 },
           },
         );
 
         if (!isCancelled) {
-          setAlgebraHistory(response.data);
+          setModuleHistory(response.data);
         }
       } catch (error: any) {
         if (!isCancelled) {
@@ -153,13 +159,13 @@ export function DashboardPage() {
       }
     };
 
-    loadAlgebraHistory();
+    loadModuleHistory();
     loadModuleProgress();
 
     return () => {
       isCancelled = true;
     };
-  }, [t, user]);
+  }, [selectedHistoryModule, t, user]);
 
   const handleLogout = () => {
     logout();
@@ -170,7 +176,7 @@ export function DashboardPage() {
     return <div className="text-center mt-20">{t("dashboard.loading")}</div>;
   }
 
-  const chartSteps = [...(algebraHistory?.recentSteps || [])].reverse();
+  const chartSteps = [...(moduleHistory?.recentSteps || [])].reverse();
   const maxTimeTaken = Math.max(
     ...chartSteps.map((step) => step.timeTakenMs),
     1,
@@ -184,6 +190,8 @@ export function DashboardPage() {
       (sum, progress) => sum + progress.accuracy,
       0,
     ) / Object.values(moduleProgress).length;
+
+  const selectedModuleLabel = t(`modules.${selectedHistoryModule}`);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -240,7 +248,7 @@ export function DashboardPage() {
                   {t("dashboard.history_entries")}
                 </p>
                 <p className="text-xl font-bold text-violet-900 mt-1">
-                  {algebraHistory?.totalSubmissions ?? 0}
+                  {moduleHistory?.totalSubmissions ?? 0}
                 </p>
               </div>
             </div>
@@ -341,20 +349,20 @@ export function DashboardPage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">
-                  {t("dashboard.algebra_history")}
+                  {selectedModuleLabel} {t("dashboard.module_history_suffix")}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  {t("dashboard.algebra_history_desc")}
+                  {t("dashboard.module_history_desc")}
                 </p>
               </div>
-              {algebraHistory && (
+              {moduleHistory && (
                 <div className="grid grid-cols-3 gap-3 min-w-full md:min-w-[320px]">
                   <div className="bg-blue-50 rounded-lg p-3">
                     <p className="text-xs uppercase tracking-wide text-blue-700">
                       {t("dashboard.history_saved_steps")}
                     </p>
                     <p className="text-xl font-bold text-blue-900 mt-1">
-                      {algebraHistory.totalSubmissions}
+                      {moduleHistory.totalSubmissions}
                     </p>
                   </div>
                   <div className="bg-emerald-50 rounded-lg p-3">
@@ -362,7 +370,7 @@ export function DashboardPage() {
                       {t("dashboard.history_accuracy")}
                     </p>
                     <p className="text-xl font-bold text-emerald-900 mt-1">
-                      {Math.round(algebraHistory.accuracy)}%
+                      {Math.round(moduleHistory.accuracy)}%
                     </p>
                   </div>
                   <div className="bg-amber-50 rounded-lg p-3">
@@ -370,10 +378,29 @@ export function DashboardPage() {
                       {t("dashboard.history_avg_time")}
                     </p>
                     <p className="text-xl font-bold text-amber-900 mt-1">
-                      {formatDuration(algebraHistory.avgTimeMs)}
+                      {formatDuration(moduleHistory.avgTimeMs)}
                     </p>
                   </div>
                 </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-5">
+              {(["mental-math", "fractions", "algebra"] as ModuleKey[]).map(
+                (module) => (
+                  <button
+                    key={module}
+                    type="button"
+                    onClick={() => setSelectedHistoryModule(module)}
+                    className={`px-3 py-2 rounded-full text-sm font-semibold transition ${
+                      selectedHistoryModule === module
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {t(`modules.${module}`)}
+                  </button>
+                ),
               )}
             </div>
 
@@ -381,9 +408,9 @@ export function DashboardPage() {
               <p className="text-gray-500 mt-6">{t("dashboard.loading")}</p>
             ) : historyError ? (
               <p className="text-red-600 mt-6">{historyError}</p>
-            ) : !algebraHistory || algebraHistory.recentSteps.length === 0 ? (
+            ) : !moduleHistory || moduleHistory.recentSteps.length === 0 ? (
               <p className="text-gray-500 mt-6">
-                {t("dashboard.history_empty")}
+                {t("dashboard.history_empty_generic")}
               </p>
             ) : (
               <div className="mt-6">
@@ -409,7 +436,7 @@ export function DashboardPage() {
                         <div
                           key={step.id}
                           className="flex-1 flex flex-col items-center justify-end gap-2 min-w-0"
-                          title={`${step.currentEquation} -> ${step.proposedStep}`}
+                          title={`${step.prompt || step.currentEquation} -> ${step.response || step.proposedStep}`}
                         >
                           <div
                             className={`w-full rounded-t-md ${
@@ -426,7 +453,7 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-3">
-                  {t("dashboard.history_chart_caption")}
+                  {t("dashboard.history_chart_caption_generic")}
                 </p>
               </div>
             )}
@@ -434,24 +461,25 @@ export function DashboardPage() {
 
           <section className="bg-white p-6 rounded shadow">
             <h3 className="text-xl font-bold text-gray-900">
-              {t("dashboard.recent_steps")}
+              {selectedModuleLabel} {t("dashboard.recent_history_suffix")}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              {t("dashboard.step_overview")}
+              {t("dashboard.history_overview_generic")}
             </p>
 
             {isHistoryLoading ? (
               <p className="text-gray-500 mt-6">{t("dashboard.loading")}</p>
             ) : historyError ? (
               <p className="text-red-600 mt-6">{historyError}</p>
-            ) : !algebraHistory || algebraHistory.recentSteps.length === 0 ? (
+            ) : !moduleHistory || moduleHistory.recentSteps.length === 0 ? (
               <p className="text-gray-500 mt-6">
-                {t("dashboard.history_empty")}
+                {t("dashboard.history_empty_generic")}
               </p>
             ) : (
               <div className="mt-5 space-y-3">
-                {algebraHistory.recentSteps.slice(0, 8).map((step) => {
+                {moduleHistory.recentSteps.slice(0, 8).map((step) => {
                   const translatedRule =
+                    selectedHistoryModule === "algebra" &&
                     step.transformationType &&
                     translatableRuleKeys.includes(step.transformationType)
                       ? t(`rules.${step.transformationType}`)
@@ -479,8 +507,16 @@ export function DashboardPage() {
                         </span>
                       </div>
                       <div className="mt-2 font-mono text-sm text-gray-800 space-y-1">
-                        <p>{step.currentEquation}</p>
-                        <p className="text-blue-700">{step.proposedStep}</p>
+                        <p>{step.prompt || step.currentEquation}</p>
+                        <p className="text-blue-700">
+                          {step.response || step.proposedStep}
+                        </p>
+                        {!step.isCorrect && step.expectedAnswer ? (
+                          <p className="text-xs text-gray-500 font-sans">
+                            {t("dashboard.history_expected_answer")}:{" "}
+                            {step.expectedAnswer}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-600">
                         <span>{formatDuration(step.timeTakenMs)}</span>

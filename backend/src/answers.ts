@@ -1,3 +1,7 @@
+import type {
+  InputJsonObject,
+  InputJsonValue,
+} from "@prisma/client/runtime/library";
 import prisma from "./db.js";
 import { validateAnswer } from "./tasks.js";
 import { validateEquation, validateExpression } from "./validator.js";
@@ -19,6 +23,9 @@ export interface ModuleHistoryStep {
   taskId: string;
   createdAt: string;
   sessionStartedAt: string;
+  prompt: string;
+  response: string;
+  expectedAnswer: string;
   currentEquation: string;
   proposedStep: string;
   expectedFirstStep: string;
@@ -38,7 +45,10 @@ export interface ModuleHistorySummary {
   recentSteps: ModuleHistoryStep[];
 }
 
-function extractAlgebraTaskData(taskData: unknown): {
+function extractModuleTaskData(taskData: unknown): {
+  prompt: string;
+  response: string;
+  expectedAnswer: string;
   currentEquation: string;
   proposedStep: string;
   expectedFirstStep: string;
@@ -46,6 +56,9 @@ function extractAlgebraTaskData(taskData: unknown): {
 } {
   if (!taskData || typeof taskData !== "object" || Array.isArray(taskData)) {
     return {
+      prompt: "",
+      response: "",
+      expectedAnswer: "",
       currentEquation: "",
       proposedStep: "",
       expectedFirstStep: "",
@@ -56,6 +69,10 @@ function extractAlgebraTaskData(taskData: unknown): {
   const data = taskData as Record<string, unknown>;
 
   return {
+    prompt: typeof data.question === "string" ? data.question : "",
+    response: typeof data.response === "string" ? data.response : "",
+    expectedAnswer:
+      typeof data.correctAnswer === "string" ? data.correctAnswer : "",
     currentEquation:
       typeof data.currentEquation === "string" ? data.currentEquation : "",
     proposedStep:
@@ -69,6 +86,36 @@ function extractAlgebraTaskData(taskData: unknown): {
   };
 }
 
+function toPrismaJsonValue(value: unknown): InputJsonValue | null | undefined {
+  if (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => toPrismaJsonValue(item) ?? null);
+  }
+
+  if (typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, entry]) => {
+        const normalizedEntry = toPrismaJsonValue(entry);
+        return normalizedEntry === undefined ? [] : [[key, normalizedEntry]];
+      }),
+    ) as InputJsonObject;
+  }
+
+  return undefined;
+}
+
+function normalizeTaskData(taskData: Record<string, unknown>): InputJsonObject {
+  return (toPrismaJsonValue(taskData) ?? {}) as InputJsonObject;
+}
+
 /**
  * Save an answer to database
  */
@@ -80,6 +127,7 @@ export async function saveAnswer(
   correctAnswer: string,
   timeTakenMs: number,
   module: Module = "mental-math",
+  taskData: Record<string, unknown> = {},
 ): Promise<AnswerSubmission> {
   let isCorrect = false;
 
@@ -104,7 +152,7 @@ export async function saveAnswer(
       userId,
       sessionId,
       taskId,
-      taskData: {}, // Can store task details here if needed
+      taskData: normalizeTaskData(taskData),
       userAnswer,
       isCorrect,
       timeTaken: timeTakenMs,
@@ -284,7 +332,13 @@ export async function getUserModuleHistory(
 
   const recentSteps = recentAnswers.map(
     (answer: (typeof recentAnswers)[number]) => {
-      const taskData = extractAlgebraTaskData(answer.taskData);
+      const taskData = extractModuleTaskData(answer.taskData);
+      const prompt =
+        taskData.prompt || taskData.currentEquation || answer.taskId;
+      const response =
+        taskData.response || taskData.proposedStep || answer.userAnswer;
+      const expectedAnswer =
+        taskData.expectedAnswer || taskData.expectedFirstStep;
 
       return {
         id: answer.id,
@@ -292,8 +346,11 @@ export async function getUserModuleHistory(
         taskId: answer.taskId,
         createdAt: answer.createdAt.toISOString(),
         sessionStartedAt: answer.session.startedAt.toISOString(),
+        prompt,
+        response,
+        expectedAnswer,
         currentEquation: taskData.currentEquation,
-        proposedStep: taskData.proposedStep || answer.userAnswer,
+        proposedStep: response,
         expectedFirstStep: taskData.expectedFirstStep,
         transformationType: taskData.transformationType,
         userAnswer: answer.userAnswer,

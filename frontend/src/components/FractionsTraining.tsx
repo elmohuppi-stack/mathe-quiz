@@ -85,6 +85,11 @@ export default function FractionsTraining({
         correctAnswer: task.correctAnswer,
         timeTakenMs,
         module: "fractions",
+        taskData: {
+          ...task.taskData,
+          correctAnswer: task.correctAnswer,
+          response: userAnswer,
+        },
       });
 
       const isCorrect = response.data.isCorrect;
