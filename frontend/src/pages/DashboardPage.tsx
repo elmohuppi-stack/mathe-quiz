@@ -23,6 +23,15 @@ interface AlgebraHistorySummary {
   recentSteps: AlgebraHistoryStep[];
 }
 
+type ModuleKey = "mental-math" | "fractions" | "algebra";
+
+interface ModuleProgressSummary {
+  module: ModuleKey;
+  level: number;
+  accuracy: number;
+  totalAnswers: number;
+}
+
 const translatableRuleKeys = [
   "subtract_both_sides",
   "add_both_sides",
@@ -55,6 +64,30 @@ export function DashboardPage() {
     useState<AlgebraHistorySummary | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
+  const [moduleProgress, setModuleProgress] = useState<
+    Record<ModuleKey, ModuleProgressSummary>
+  >({
+    "mental-math": {
+      module: "mental-math",
+      level: 1,
+      accuracy: 0,
+      totalAnswers: 0,
+    },
+    fractions: {
+      module: "fractions",
+      level: 1,
+      accuracy: 0,
+      totalAnswers: 0,
+    },
+    algebra: {
+      module: "algebra",
+      level: 1,
+      accuracy: 0,
+      totalAnswers: 0,
+    },
+  });
+  const [isProgressLoading, setIsProgressLoading] = useState(true);
+  const [progressError, setProgressError] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -90,7 +123,38 @@ export function DashboardPage() {
       }
     };
 
+    const loadModuleProgress = async () => {
+      try {
+        setIsProgressLoading(true);
+        setProgressError("");
+        const [mentalMath, fractions, algebra] = await Promise.all([
+          api.get<ModuleProgressSummary>("/modules/progress/mental-math"),
+          api.get<ModuleProgressSummary>("/modules/progress/fractions"),
+          api.get<ModuleProgressSummary>("/modules/progress/algebra"),
+        ]);
+
+        if (!isCancelled) {
+          setModuleProgress({
+            "mental-math": mentalMath.data,
+            fractions: fractions.data,
+            algebra: algebra.data,
+          });
+        }
+      } catch (error: any) {
+        if (!isCancelled) {
+          setProgressError(
+            error.response?.data?.error || t("errors.general.internal_error"),
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsProgressLoading(false);
+        }
+      }
+    };
+
     loadAlgebraHistory();
+    loadModuleProgress();
 
     return () => {
       isCancelled = true;
@@ -111,6 +175,15 @@ export function DashboardPage() {
     ...chartSteps.map((step) => step.timeTakenMs),
     1,
   );
+  const totalSolvedTasks = Object.values(moduleProgress).reduce(
+    (sum, progress) => sum + progress.totalAnswers,
+    0,
+  );
+  const averageAccuracy =
+    Object.values(moduleProgress).reduce(
+      (sum, progress) => sum + progress.accuracy,
+      0,
+    ) / Object.values(moduleProgress).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -134,6 +207,98 @@ export function DashboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-12">
         <h2 className="text-3xl font-bold mb-8">{t("dashboard.title")}</h2>
+
+        <section className="bg-white p-6 rounded shadow mb-8">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                {t("dashboard.learning_progress")}
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {t("dashboard.learning_progress_desc")}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-w-full md:min-w-[420px]">
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-xs uppercase tracking-wide text-blue-700">
+                  {t("dashboard.total_solved_tasks")}
+                </p>
+                <p className="text-xl font-bold text-blue-900 mt-1">
+                  {totalSolvedTasks}
+                </p>
+              </div>
+              <div className="bg-emerald-50 rounded-lg p-3">
+                <p className="text-xs uppercase tracking-wide text-emerald-700">
+                  {t("dashboard.average_accuracy")}
+                </p>
+                <p className="text-xl font-bold text-emerald-900 mt-1">
+                  {Math.round(averageAccuracy)}%
+                </p>
+              </div>
+              <div className="bg-violet-50 rounded-lg p-3 col-span-2 md:col-span-1">
+                <p className="text-xs uppercase tracking-wide text-violet-700">
+                  {t("dashboard.history_entries")}
+                </p>
+                <p className="text-xl font-bold text-violet-900 mt-1">
+                  {algebraHistory?.totalSubmissions ?? 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {isProgressLoading ? (
+            <p className="text-gray-500 mt-6">{t("dashboard.loading")}</p>
+          ) : progressError ? (
+            <p className="text-red-600 mt-6">{progressError}</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              {(["mental-math", "fractions", "algebra"] as ModuleKey[]).map(
+                (module) => {
+                  const progress = moduleProgress[module];
+
+                  return (
+                    <article
+                      key={module}
+                      className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h4 className="font-semibold text-gray-900">
+                            {t(`modules.${module}`)}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {t("dashboard.module_tasks_solved")}:{" "}
+                            {progress.totalAnswers}
+                          </p>
+                        </div>
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                          L{progress.level}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                            {t("dashboard.history_accuracy")}
+                          </p>
+                          <p className="text-lg font-bold text-gray-900 mt-1">
+                            {Math.round(progress.accuracy)}%
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => navigate(`/training/${module}`)}
+                          className="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 transition text-sm"
+                        >
+                          {t("common.startTraining")}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                },
+              )}
+            </div>
+          )}
+        </section>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded shadow hover:shadow-lg transition">
             <h3 className="text-xl font-bold mb-2">

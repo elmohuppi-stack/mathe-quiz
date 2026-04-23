@@ -5,7 +5,12 @@ import { z } from "zod";
 import { registerUser, loginUser, AppError } from "./auth.js";
 import { getTranslatorFromRequest } from "./i18n/useI18n.js";
 import { generateTask, Module } from "./tasks.js";
-import { startSession, endSession, getModuleProgress } from "./sessions.js";
+import {
+  startSession,
+  endSession,
+  getModuleProgress,
+  syncModuleProgress,
+} from "./sessions.js";
 import {
   saveAnswer,
   getSessionStats,
@@ -309,6 +314,8 @@ app.post(
           errorType: errorClass?.type || null,
         },
       });
+
+      await syncModuleProgress(userId, "algebra");
 
       // Check if the step matches the expected first step
       const isExactMatch =

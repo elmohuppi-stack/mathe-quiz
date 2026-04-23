@@ -129,6 +129,63 @@ export async function getModuleProgress(userId: string, module: Module) {
 }
 
 /**
+ * Recalculate module progress directly from persisted answers.
+ * This keeps dashboard stats up to date even if a session is not explicitly ended.
+ */
+export async function syncModuleProgress(userId: string, module: Module) {
+  const [totalAnswers, correctAnswers, existingProgress] = await Promise.all([
+    prisma.answer.count({
+      where: {
+        userId,
+        session: {
+          module,
+        },
+      },
+    }),
+    prisma.answer.count({
+      where: {
+        userId,
+        isCorrect: true,
+        session: {
+          module,
+        },
+      },
+    }),
+    prisma.moduleProgress.findUnique({
+      where: {
+        userId_module: {
+          userId,
+          module,
+        },
+      },
+    }),
+  ]);
+
+  const accuracy = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0;
+
+  return prisma.moduleProgress.upsert({
+    where: {
+      userId_module: {
+        userId,
+        module,
+      },
+    },
+    create: {
+      userId,
+      module,
+      level: existingProgress?.level ?? 1,
+      accuracy,
+      totalAnswers,
+    },
+    update: {
+      level: existingProgress?.level ?? 1,
+      accuracy,
+      totalAnswers,
+    },
+  });
+}
+
+/**
  * Get user's all sessions
  */
 export async function getUserSessions(userId: string, limit = 10) {

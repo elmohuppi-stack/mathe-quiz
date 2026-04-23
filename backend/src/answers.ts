@@ -1,6 +1,7 @@
 import prisma from "./db.js";
 import { validateAnswer } from "./tasks.js";
 import { validateEquation, validateExpression } from "./validator.js";
+import { syncModuleProgress } from "./sessions.js";
 import type { Module } from "./tasks.js";
 
 export interface AnswerSubmission {
@@ -110,6 +111,8 @@ export async function saveAnswer(
       errorType: isCorrect ? null : categorizeError(userAnswer, correctAnswer),
     },
   });
+
+  await syncModuleProgress(userId, module);
 
   return {
     sessionId,
