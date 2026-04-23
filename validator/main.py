@@ -81,6 +81,28 @@ def parse_math_expression(expr_str: str, variables: list[str] = ["x"]):
         return None, f"syntax_error: {str(e)}"
 
 
+def parse_equation(equation_str: str, variables: list[str] = ["x"]):
+    """Parse and validate an equation with exactly one equals sign"""
+    parts = equation_str.split("=")
+    if len(parts) != 2:
+        return None, None, "syntax_error: equation must contain exactly one '='"
+
+    left_expr, left_err = parse_math_expression(parts[0].strip(), variables)
+    right_expr, right_err = parse_math_expression(parts[1].strip(), variables)
+
+    if left_err or right_err:
+        return None, None, left_err or right_err
+
+    return left_expr, right_expr, None
+
+
+def get_primary_variable(variables: list[str] = ["x"]):
+    vars_symbols = symbols(variables)
+    if isinstance(vars_symbols, tuple):
+        return vars_symbols[0]
+    return vars_symbols
+
+
 def are_expressions_equivalent(expr1: str, expr2: str, variables: list[str] = ["x"]):
     """Check if two expressions are mathematically equivalent"""
     try:
@@ -108,14 +130,85 @@ def are_expressions_equivalent(expr1: str, expr2: str, variables: list[str] = ["
         return False, f"comparison_error: {str(e)}"
 
 
+def are_equations_equivalent(eq1: str, eq2: str, variables: list[str] = ["x"]):
+    """Check if two equations are mathematically equivalent"""
+    try:
+        left1, right1, err1 = parse_equation(eq1, variables)
+        left2, right2, err2 = parse_equation(eq2, variables)
+
+        if err1 or err2:
+            return False, err1 or err2
+
+        var = get_primary_variable(variables)
+        sol1 = [simplify(sol) for sol in solve(left1 - right1, var)]
+        sol2 = [simplify(sol) for sol in solve(left2 - right2, var)]
+
+        if sorted(str(sol) for sol in sol1) == sorted(str(sol) for sol in sol2):
+            return True, None
+
+        normalized1 = simplify(left1 - right1)
+        normalized2 = simplify(left2 - right2)
+
+        if simplify(normalized1 - normalized2) == 0:
+            return True, None
+
+        try:
+            ratio = simplify(normalized1 / normalized2)
+            if ratio != 0 and ratio.free_symbols.isdisjoint({var}):
+                return True, None
+        except Exception:
+            pass
+
+        return False, None
+    except Exception as e:
+        return False, f"comparison_error: {str(e)}"
+
+
 def identify_transformation(current: str, proposed: str, variables: list[str] = ["x"]):
     """Identify what mathematical transformation was applied"""
     try:
-        parsed_current, _ = parse_math_expression(current, variables)
-        parsed_proposed, _ = parse_math_expression(proposed, variables)
+        if "=" in current and "=" in proposed:
+            curr_left, curr_right, current_err = parse_equation(current, variables)
+            prop_left, prop_right, proposed_err = parse_equation(proposed, variables)
 
-        if parsed_current is None or parsed_proposed is None:
-            return "unknown", None
+            if current_err or proposed_err:
+                return "unknown", current_err or proposed_err
+
+            diff_left = simplify(curr_left - prop_left)
+            diff_right = simplify(curr_right - prop_right)
+            if diff_left == diff_right and diff_left != 0:
+                if diff_left.is_number and diff_left.is_negative:
+                    return "add_both_sides", None
+                return "subtract_both_sides", None
+
+            if (
+                curr_left != 0
+                and curr_right != 0
+                and prop_left != 0
+                and prop_right != 0
+            ):
+                try:
+                    ratio_left = simplify(prop_left / curr_left)
+                    ratio_right = simplify(prop_right / curr_right)
+                    if ratio_left == ratio_right and ratio_left != 1:
+                        if ratio_left.is_number and ratio_left.is_fraction:
+                            return "divide_both_sides", None
+                        return "multiply_both_sides", None
+                except Exception:
+                    pass
+
+            return "other_transformation", None
+
+        parsed_current, current_err = parse_math_expression(current, variables)
+        parsed_proposed, proposed_err = parse_math_expression(proposed, variables)
+
+        if (
+            current_err
+            or proposed_err
+            or parsed_current is None
+            or parsed_proposed is None
+        ):
+            return "unknown", current_err or proposed_err
 
         current_expanded = expand(parsed_current)
         proposed_expanded = expand(parsed_proposed)
@@ -248,11 +341,20 @@ async def validate_equation(data: Equation):
 async def validate_step(data: Step):
     """Validate if a step transformation is correct"""
     try:
-        # Parse both expressions
-        current_expr, current_err = parse_math_expression(data.current, data.variables)
-        proposed_expr, proposed_err = parse_math_expression(
-            data.proposed, data.variables
-        )
+        is_equation_step = "=" in data.current or "=" in data.proposed
+
+        if is_equation_step:
+            _, _, current_err = parse_equation(data.current, data.variables)
+            _, _, proposed_err = parse_equation(data.proposed, data.variables)
+            are_equiv, comp_err = are_equations_equivalent(
+                data.current, data.proposed, data.variables
+            )
+        else:
+            _, current_err = parse_math_expression(data.current, data.variables)
+            _, proposed_err = parse_math_expression(data.proposed, data.variables)
+            are_equiv, comp_err = are_expressions_equivalent(
+                data.current, data.proposed, data.variables
+            )
 
         if current_err or proposed_err:
             return StepValidation(
@@ -261,11 +363,6 @@ async def validate_step(data: Step):
                 message=f"Parse error: {current_err or proposed_err}",
                 error_code=(current_err or proposed_err).split(":")[0],
             )
-
-        # Check if expressions are equivalent
-        are_equiv, comp_err = are_expressions_equivalent(
-            data.current, data.proposed, data.variables
-        )
 
         if comp_err:
             return StepValidation(

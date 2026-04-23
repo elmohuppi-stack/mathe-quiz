@@ -93,8 +93,7 @@ export function classifyError(
   ) {
     return {
       type: "SYNTAX_ERROR",
-      description:
-        "Die eingegebene Gleichung ist ungültig. Bitte überprüfe die Syntax.",
+      description: "errors.training.syntax_error",
       severity: "critical",
     };
   }
@@ -121,7 +120,7 @@ export function classifyError(
       ) {
         return {
           type: "SIGN_ERROR",
-          description: "Das Vorzeichen wurde falsch behandelt.",
+          description: "errors.training.sign_error",
           severity: "critical",
         };
       }
@@ -133,8 +132,7 @@ export function classifyError(
       ) {
         return {
           type: "RULE_VIOLATION",
-          description:
-            "Die Operation wurde nur auf eine Seite angewendet. Sie müssen auf beide Seiten anwenden.",
+          description: "errors.training.rule_violation",
           severity: "critical",
         };
       }
@@ -145,8 +143,7 @@ export function classifyError(
       ) {
         return {
           type: "RULE_VIOLATION",
-          description:
-            "Die Operation wurde nur auf eine Seite angewendet. Sie müssen auf beide Seiten anwenden.",
+          description: "errors.training.rule_violation",
           severity: "critical",
         };
       }
@@ -155,8 +152,7 @@ export function classifyError(
     // Generic non-equivalent error
     return {
       type: "INCORRECT_STEP",
-      description:
-        "Der Schritt ist mathematisch nicht korrekt. Überprüfe deine Berechnung.",
+      description: "errors.training.incorrect_step",
       severity: "critical",
     };
   }
@@ -166,8 +162,7 @@ export function classifyError(
     // If it's equivalent but transformation type is "other", likely too many steps combined
     return {
       type: "TOO_BIG_STEP",
-      description:
-        "Der Schritt ist zu groß. Bitte mache einen Schritt nach dem anderen.",
+      description: "errors.training.too_big_step",
       severity: "warning",
     };
   }

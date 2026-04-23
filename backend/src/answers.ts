@@ -96,14 +96,19 @@ function categorizeError(userAnswer: string, correctAnswer: string): string {
  * Get answer statistics for a session
  */
 export async function getSessionStats(sessionId: string) {
-  const answers = await prisma.answer.findMany({
+  const answers: Array<{
+    isCorrect: boolean;
+    timeTaken: number;
+    errorType: string | null;
+  }> = await prisma.answer.findMany({
     where: { sessionId },
   });
 
-  const correctCount = answers.filter((a) => a.isCorrect).length;
+  const correctCount = answers.filter((answer) => answer.isCorrect).length;
   const avgTime =
     answers.length > 0
-      ? answers.reduce((sum, a) => sum + a.timeTaken, 0) / answers.length
+      ? answers.reduce((sum, answer) => sum + answer.timeTaken, 0) /
+        answers.length
       : 0;
 
   return {

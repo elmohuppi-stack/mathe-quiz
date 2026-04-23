@@ -185,9 +185,12 @@ export default function AlgebraTraining({
       } else {
         // Step is invalid - show error classification
         setTaskCount((prev) => prev + 1);
+        const errorMessage = response.data.errorDescription
+          ? t(response.data.errorDescription)
+          : t("training.incorrect");
         setFeedback({
           type: "error",
-          message: response.data.errorDescription || t("training.incorrect"),
+          message: errorMessage,
           details: response.data.message,
         });
       }
@@ -287,7 +290,9 @@ export default function AlgebraTraining({
           {task.metadata?.rule && (
             <p className="text-xs text-gray-600 mt-2">
               {t("training.rule")}:{" "}
-              <span className="font-semibold">{task.metadata.rule}</span>
+              <span className="font-semibold">
+                {t(`rules.${task.metadata.rule}`)}
+              </span>
             </p>
           )}
         </div>
@@ -322,8 +327,9 @@ export default function AlgebraTraining({
         <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
           <p className="text-sm text-yellow-800">
             <strong>{t("training.hint")}:</strong>{" "}
-            {stepValidation.errorDescription ||
-              "Überprüfe dein Schritt nochmal."}
+            {stepValidation.errorDescription
+              ? t(stepValidation.errorDescription)
+              : t("training.incorrect")}
           </p>
         </div>
       )}
