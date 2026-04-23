@@ -1,4 +1,4 @@
-.PHONY: help build up start down stop logs clean restart db-reset db-seed
+.PHONY: help build up start down stop logs clean restart db-reset db-seed test-unit
 
 # Colors for output
 BLUE=\033[0;34m
@@ -22,6 +22,7 @@ help:
 	@echo "  $(YELLOW)make logs-validator$(NC) - Show validator logs"
 	@echo "  $(YELLOW)make logs-db$(NC)        - Show database logs"
 	@echo "  $(YELLOW)make clean$(NC)          - Remove containers, volumes, and data"
+	@echo "  $(YELLOW)make test-unit$(NC)      - Run backend unit tests"
 	@echo "  $(YELLOW)make db-reset$(NC)       - Reset database (remove and recreate)"
 	@echo "  $(YELLOW)make ps$(NC)             - Show running containers"
 	@echo "  $(YELLOW)make shell-backend$(NC)  - SSH into backend container"
@@ -119,6 +120,11 @@ clean: down
 	@echo "$(YELLOW)Cleaning up Docker resources...$(NC)"
 	docker volume rm mathe-quiz_postgres_data 2>/dev/null || true
 	@echo "$(GREEN)✓ All Docker resources cleaned!$(NC)"
+
+# Run backend unit tests
+test-unit:
+	@echo "$(GREEN)Running backend unit tests...$(NC)"
+	npm run test --workspace=backend
 
 # Health check
 health:

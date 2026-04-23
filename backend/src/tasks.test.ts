@@ -146,9 +146,7 @@ test("algebra tasks are dispatched with step-by-step metadata for all levels", (
       typeof task.expectedFirstStep === "string" &&
         task.expectedFirstStep.includes("="),
     );
-    assert.ok(
-      typeof task.correctAnswer === "string" && task.correctAnswer.length > 0,
-    );
+    assert.match(task.correctAnswer, /^x\s=\s.+$/);
   }
 });
 

@@ -153,7 +153,7 @@ function generateAlgebraTask(level: number, sessionHashes?: Set<string>): Task {
       equation: algebraTask.prompt,
       ...algebraTask.metadata.coefficients,
     },
-    correctAnswer: algebraTask.metadata.solution, // The final solution
+    correctAnswer: `x = ${algebraTask.metadata.solution}`,
     metadata: algebraTask.metadata,
   };
 }

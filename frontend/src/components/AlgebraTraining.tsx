@@ -2,6 +2,99 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "../i18n/useTranslation";
 import api from "../lib/api";
 
+function normalizeAlgebraSide(side: string): string {
+  return side
+    .replace(/\s+/g, "")
+    .replace(/\+\+/g, "+")
+    .replace(/\+-/g, "-")
+    .replace(/-\+/g, "-")
+    .replace(/--/g, "+");
+}
+
+function countVariableOccurrences(side: string): number {
+  return (side.match(/x/g) || []).length;
+}
+
+function parseLinearSide(side: string): {
+  coefficient: number;
+  constant: number;
+} | null {
+  const normalized = normalizeAlgebraSide(side);
+  const match = normalized.match(/^([+-]?\d*)x([+-]\d+)?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const coefficientToken = match[1];
+  const coefficient =
+    coefficientToken === "" || coefficientToken === "+"
+      ? 1
+      : coefficientToken === "-"
+        ? -1
+        : Number(coefficientToken);
+
+  return {
+    coefficient,
+    constant: match[2] ? Number(match[2]) : 0,
+  };
+}
+
+function deriveCurrentRule(
+  equation: string,
+  fallbackRule?: string,
+): string | undefined {
+  const parts = equation.split("=");
+  if (parts.length !== 2) {
+    return fallbackRule;
+  }
+
+  const left = parts[0].trim();
+  const right = parts[1].trim();
+
+  if (equation.includes("(")) {
+    return "distributive_law";
+  }
+
+  if (
+    countVariableOccurrences(left) > 1 ||
+    countVariableOccurrences(right) > 1
+  ) {
+    return "combine_like_terms";
+  }
+
+  const leftLinear = parseLinearSide(left);
+  const rightLinear = parseLinearSide(right);
+  const leftHasVariable = left.includes("x");
+  const rightHasVariable = right.includes("x");
+
+  if (leftLinear && !rightHasVariable) {
+    if (leftLinear.constant !== 0) {
+      return leftLinear.constant > 0 ? "subtract_both_sides" : "add_both_sides";
+    }
+    if (Math.abs(leftLinear.coefficient) !== 1) {
+      return "divide_both_sides";
+    }
+  }
+
+  if (rightLinear && !leftHasVariable) {
+    if (rightLinear.constant !== 0) {
+      return rightLinear.constant > 0
+        ? "subtract_both_sides"
+        : "add_both_sides";
+    }
+    if (Math.abs(rightLinear.coefficient) !== 1) {
+      return "divide_both_sides";
+    }
+  }
+
+  if (leftHasVariable && rightHasVariable) {
+    return "subtract_both_sides";
+  }
+
+  return fallbackRule;
+}
+
 interface SessionData {
   sessionId: string;
   userId: string;
@@ -56,9 +149,30 @@ export default function AlgebraTraining({
     message: string;
     details?: string;
   }>({ type: null, message: "" });
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [showStepHistory, setShowStepHistory] = useState(false);
   const [stepValidation, setStepValidation] = useState<StepValidation | null>(
     null,
   );
+
+  const levelFocusKey = `training.algebra_level_focus_${level}`;
+  const hintMessage = stepValidation?.errorDescription
+    ? t(stepValidation.errorDescription)
+    : "";
+  const currentRuleKey = deriveCurrentRule(
+    currentEquation,
+    task?.metadata?.rule,
+  );
+  const historySummary = `${steps.length} ${t("training.history_steps_so_far")}`;
+
+  useEffect(() => {
+    setShowInstructions(
+      localStorage.getItem("algebra-training-help-collapsed") !== "true",
+    );
+    setShowStepHistory(
+      localStorage.getItem("algebra-training-history-expanded") === "true",
+    );
+  }, []);
 
   // Load next task
   useEffect(() => {
@@ -191,7 +305,6 @@ export default function AlgebraTraining({
         setFeedback({
           type: "error",
           message: errorMessage,
-          details: response.data.message,
         });
       }
     } catch (error: any) {
@@ -203,6 +316,22 @@ export default function AlgebraTraining({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleToggleInstructions = () => {
+    setShowInstructions((prev) => {
+      const next = !prev;
+      localStorage.setItem("algebra-training-help-collapsed", String(!next));
+      return next;
+    });
+  };
+
+  const handleToggleStepHistory = () => {
+    setShowStepHistory((prev) => {
+      const next = !prev;
+      localStorage.setItem("algebra-training-history-expanded", String(next));
+      return next;
+    });
   };
 
   const handleEndSession = async () => {
@@ -235,66 +364,171 @@ export default function AlgebraTraining({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-blue-50 rounded p-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-blue-50 rounded p-3">
           <p className="text-gray-600 text-sm">{t("training.tasks_solved")}</p>
-          <p className="text-2xl font-bold text-blue-600">{taskCount}</p>
+          <p className="text-xl font-bold text-blue-600">{taskCount}</p>
         </div>
-        <div className="bg-green-50 rounded p-4">
+        <div className="bg-green-50 rounded p-3">
           <p className="text-gray-600 text-sm">{t("training.correct")}</p>
-          <p className="text-2xl font-bold text-green-600">
+          <p className="text-xl font-bold text-green-600">
             {taskCount > 0 ? Math.round((correctCount / taskCount) * 100) : 0}%
           </p>
         </div>
-        <div className="bg-purple-50 rounded p-4">
+        <div className="bg-purple-50 rounded p-3">
           <p className="text-gray-600 text-sm">{t("training.task_level")}</p>
-          <p className="text-2xl font-bold text-purple-600">L{level}</p>
+          <p className="text-xl font-bold text-purple-600">L{level}</p>
         </div>
       </div>
 
       {/* Step History */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <p className="text-gray-700 font-semibold mb-3">
-          {t("training.step_history")}
-        </p>
-        <div className="space-y-2 font-mono text-sm">
-          {steps.map((step, idx) => (
-            <div key={idx} className="flex items-start gap-3">
-              <span className="text-blue-600 font-bold flex-shrink-0">
-                {idx + 1}.
-              </span>
-              <span className="text-gray-800 break-words">{step}</span>
+      {showStepHistory ? (
+        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-gray-700 font-semibold">
+                {t("training.step_history")}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">{historySummary}</p>
             </div>
-          ))}
+            <button
+              type="button"
+              onClick={handleToggleStepHistory}
+              className="text-xs font-semibold text-gray-700 hover:text-gray-900 whitespace-nowrap"
+            >
+              {t("training.hide_history")}
+            </button>
+          </div>
+          <div className="space-y-1.5 font-mono text-sm max-h-28 overflow-auto pr-1">
+            {steps.map((step, idx) => (
+              <div key={idx} className="flex items-start gap-3">
+                <span className="text-blue-600 font-bold flex-shrink-0">
+                  {idx + 1}.
+                </span>
+                <span className="text-gray-800 break-words">{step}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-gray-50 rounded-lg px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-800">
+              {t("training.step_history")}
+            </p>
+            <p className="text-sm text-gray-500 truncate">{historySummary}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleStepHistory}
+            className="text-xs font-semibold text-gray-700 hover:text-gray-900 whitespace-nowrap"
+          >
+            {t("training.show_history")}
+          </button>
+        </div>
+      )}
 
-      {/* Current Equation & Hint */}
-      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-8">
+      {showInstructions ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-amber-800">
+                {t("training.how_to_solve")}
+              </p>
+              <p className="text-sm text-amber-900 mt-1.5">
+                {t("training.single_step_instruction")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleInstructions}
+              className="text-xs font-semibold text-amber-900 hover:text-amber-950 whitespace-nowrap"
+            >
+              {t("training.hide_help")}
+            </button>
+          </div>
+          <div className="grid gap-2 md:grid-cols-3 text-sm">
+            <div className="bg-white rounded-md p-3 border border-amber-100">
+              <p className="font-semibold text-gray-800">
+                {t("training.current_goal")}
+              </p>
+              <p className="text-gray-600 mt-1">
+                {t("training.apply_rule_instruction")}
+              </p>
+            </div>
+            <div className="bg-white rounded-md p-3 border border-amber-100">
+              <p className="font-semibold text-gray-800">
+                {t("training.one_step_only")}
+              </p>
+              <p className="text-gray-600 mt-1">
+                {t("training.one_step_only_description")}
+              </p>
+            </div>
+            <div className="bg-white rounded-md p-3 border border-amber-100">
+              <p className="font-semibold text-gray-800">
+                {t("training.completion_title")}
+              </p>
+              <p className="text-gray-600 mt-1">
+                {t("training.completion_instruction")}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-6 h-6 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center text-sm font-bold flex-shrink-0">
+              ?
+            </span>
+            <p className="text-sm text-amber-900 truncate">
+              {t("training.help_collapsed")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleInstructions}
+            className="text-xs font-semibold text-amber-900 hover:text-amber-950 whitespace-nowrap"
+          >
+            {t("training.show_help")}
+          </button>
+        </div>
+      )}
+
+      {/* Current Equation & Guidance */}
+      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-6">
         <p className="text-gray-600 mb-2 text-sm uppercase tracking-wide">
           {t("training.current_equation")}
         </p>
-        <p className="text-4xl font-bold text-gray-800 font-mono mb-6">
+        <p className="text-3xl font-bold text-gray-800 font-mono mb-4">
           {currentEquation}
         </p>
-
-        <div className="bg-white bg-opacity-70 rounded p-4 border-l-4 border-blue-500">
-          <p className="text-sm text-gray-700 font-semibold mb-1">
-            💡 {t("training.expected_next_step")}
-          </p>
-          <p className="text-lg font-mono text-blue-700">
-            {task.expectedFirstStep}
-          </p>
-          {task.metadata?.rule && (
-            <p className="text-xs text-gray-600 mt-2">
-              {t("training.rule")}:{" "}
-              <span className="font-semibold">
-                {t(`rules.${task.metadata.rule}`)}
-              </span>
+        <div className="grid gap-2 md:grid-cols-3">
+          <div className="bg-white bg-opacity-70 rounded p-3 border-l-4 border-blue-500">
+            <p className="text-sm text-gray-700 font-semibold mb-1">
+              {t("training.current_step")}
             </p>
-          )}
+            <p className="text-lg font-mono text-blue-700">{steps.length}</p>
+          </div>
+          <div className="bg-white bg-opacity-70 rounded p-3 border-l-4 border-blue-500">
+            <p className="text-sm text-gray-700 font-semibold mb-1">
+              {t("training.rule")}
+            </p>
+            <p className="text-sm text-blue-700 font-semibold">
+              {currentRuleKey
+                ? t(`rules.${currentRuleKey}`)
+                : t("common.loading")}
+            </p>
+          </div>
+          <div className="bg-white bg-opacity-70 rounded p-3 border-l-4 border-blue-500">
+            <p className="text-sm text-gray-700 font-semibold mb-1">
+              {t("training.level_focus")}
+            </p>
+            <p className="text-sm text-blue-700 font-semibold">
+              {t(levelFocusKey)}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -310,29 +544,22 @@ export default function AlgebraTraining({
           }`}
         >
           <p className="font-semibold">{feedback.message}</p>
-          {feedback.details && (
-            <p className="text-sm mt-1 opacity-80">{feedback.details}</p>
-          )}
-          {stepValidation?.errorType && (
-            <div className="mt-2 text-xs bg-opacity-50 bg-gray-600 text-gray-100 p-2 rounded">
-              {t("training.error_type")}:{" "}
-              <strong>{stepValidation.errorType}</strong>
-            </div>
-          )}
         </div>
       )}
 
       {/* Step Validation Hint */}
-      {stepValidation && !stepValidation.isValid && userStep.trim() && (
-        <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-          <p className="text-sm text-yellow-800">
-            <strong>{t("training.hint")}:</strong>{" "}
-            {stepValidation.errorDescription
-              ? t(stepValidation.errorDescription)
-              : t("training.incorrect")}
-          </p>
-        </div>
-      )}
+      {stepValidation &&
+        !stepValidation.isValid &&
+        userStep.trim() &&
+        stepValidation.errorSeverity === "warning" &&
+        hintMessage &&
+        hintMessage !== feedback.message && (
+          <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+            <p className="text-sm text-yellow-800">
+              <strong>{t("training.hint")}:</strong> {hintMessage}
+            </p>
+          </div>
+        )}
 
       {/* Step Input Form */}
       <form
@@ -340,7 +567,7 @@ export default function AlgebraTraining({
           e.preventDefault();
           handleValidateStep();
         }}
-        className="space-y-4"
+        className="space-y-3"
       >
         <div>
           <label className="block text-gray-700 font-semibold mb-2">
@@ -350,8 +577,8 @@ export default function AlgebraTraining({
             type="text"
             value={userStep}
             onChange={(e) => handleStepChange(e.target.value)}
-            placeholder="z.B.: 2*x = 8"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-mono"
+            placeholder={t("training.example_next_step")}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-mono"
             disabled={isSubmitting}
             autoFocus
           />
@@ -364,14 +591,14 @@ export default function AlgebraTraining({
           <button
             type="submit"
             disabled={isSubmitting || !userStep.trim()}
-            className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-bold py-3 px-4 rounded-lg transition"
+            className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-bold py-2.5 px-4 rounded-lg transition"
           >
             {isSubmitting ? t("common.checking") : t("common.check_step")}
           </button>
           <button
             type="button"
             onClick={handleEndSession}
-            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg transition"
+            className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2.5 px-5 rounded-lg transition"
           >
             {t("training.end_session")}
           </button>
