@@ -13,6 +13,30 @@ const port = parseInt(process.env.PORT || "3000");
 const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
+/**
+ * Session-level task hash cache to prevent duplicate tasks within a session
+ * Format: Map<sessionId, Set<taskHash>>
+ * Cleaned up when sessions end
+ */
+const sessionTaskHashes = new Map<string, Set<string>>();
+
+/**
+ * Get or create task hash set for a session
+ */
+function getSessionTaskHashes(sessionId: string): Set<string> {
+  if (!sessionTaskHashes.has(sessionId)) {
+    sessionTaskHashes.set(sessionId, new Set());
+  }
+  return sessionTaskHashes.get(sessionId)!;
+}
+
+/**
+ * Clear task hashes for a session (call when session ends)
+ */
+function clearSessionTaskHashes(sessionId: string): void {
+  sessionTaskHashes.delete(sessionId);
+}
+
 const app = Fastify({ logger: true });
 type AuthenticatedUser = { id: string; email: string };
 
@@ -151,10 +175,25 @@ app.post(
         .object({
           module: z.enum(["mental-math", "fractions", "algebra"]),
           level: z.number().int().min(1).max(5).default(1),
+          sessionId: z.string().optional(), // For task deduplication
         })
         .parse(request.body);
 
-      const task = generateTask(body.module as Module, body.level);
+      // Get task hashes for this session (if provided)
+      const sessionHashes = body.sessionId
+        ? getSessionTaskHashes(body.sessionId)
+        : undefined;
+
+      const task = generateTask(
+        body.module as Module,
+        body.level,
+        sessionHashes,
+      );
+
+      // Track this task hash for the session
+      if (body.sessionId && task.taskHash) {
+        sessionHashes!.add(task.taskHash);
+      }
 
       reply.send(task);
     } catch (error) {
@@ -237,6 +276,9 @@ app.post(
         body.totalTasks,
         body.avgTimeMs,
       );
+
+      // Clear task hashes for this session
+      clearSessionTaskHashes(body.sessionId);
 
       reply.send(stats);
     } catch (error) {

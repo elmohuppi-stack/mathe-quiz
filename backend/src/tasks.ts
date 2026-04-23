@@ -1,11 +1,20 @@
+import {
+  generateAlgebraTask as generateAlgebraTaskImpl,
+  generateUniqueAlgebraTask,
+} from "./algebra-generator.js";
+
 export type Module = "mental-math" | "fractions" | "algebra";
 
 export interface Task {
   taskId: string;
+  taskHash?: string; // For deduplication
   module: Module;
   level: number;
   taskData: Record<string, any>;
   correctAnswer: string;
+  expectedFirstStep?: string; // For step-by-step tasks (algebra)
+  prompt?: string; // For step-by-step tasks (algebra)
+  metadata?: Record<string, any>; // Additional task metadata
 }
 
 /**
@@ -122,72 +131,42 @@ function generateFractionsTask(level: number): Task {
 }
 
 /**
- * Generate an algebra task
- * Level 1-2: Simple linear equations
- * Level 3-4: Quadratic or multi-variable
- * Level 5: Complex expressions
+ * Generate an algebra task using the robust algebra-generator
+ * Level 1-5: Linear equations with increasing complexity
+ * Returns step-by-step format with expectedFirstStep for validation
  */
-function generateAlgebraTask(level: number): Task {
-  const taskId = `algebra-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-  let question: string;
-  let correctAnswer: string;
-  let taskData: Record<string, any>;
-
-  if (level <= 2) {
-    // x + a = b
-    const a = Math.floor(Math.random() * 20) + 1;
-    const b = Math.floor(Math.random() * 30) + 20;
-    question = `x + ${a} = ${b}`;
-    correctAnswer = `x = ${b - a}`;
-    taskData = {
-      type: "linear_equation",
-      equation: question,
-      a,
-      b,
-    };
-  } else if (level <= 4) {
-    // ax + b = c
-    const a = Math.floor(Math.random() * 5) + 1;
-    const b = Math.floor(Math.random() * 20) + 1;
-    const c = Math.floor(Math.random() * 50) + 30;
-    question = `${a}x + ${b} = ${c}`;
-    correctAnswer = `x = ${(c - b) / a}`;
-    taskData = {
-      type: "linear_equation_complex",
-      equation: question,
-      a,
-      b,
-      c,
-    };
-  } else {
-    // x^2 + a = b
-    const a = Math.floor(Math.random() * 10) + 1;
-    const b = Math.floor(Math.random() * 50) + 20;
-    question = `x² + ${a} = ${b}`;
-    const x = Math.sqrt(b - a);
-    correctAnswer = `x = ±${x}`;
-    taskData = {
-      type: "quadratic_equation",
-      equation: question,
-      a,
-      b,
-    };
-  }
+function generateAlgebraTask(level: number, sessionHashes?: Set<string>): Task {
+  const algebraTask = sessionHashes
+    ? generateUniqueAlgebraTask(level, sessionHashes)
+    : generateAlgebraTaskImpl(level);
 
   return {
-    taskId,
+    taskId: algebraTask.taskId,
+    taskHash: algebraTask.taskHash,
     module: "algebra",
-    level,
-    taskData,
-    correctAnswer,
+    level: algebraTask.level,
+    prompt: algebraTask.prompt,
+    expectedFirstStep: algebraTask.expectedFirstStep,
+    taskData: {
+      type: "step_by_step",
+      pattern: algebraTask.pattern,
+      equation: algebraTask.prompt,
+      ...algebraTask.metadata.coefficients,
+    },
+    correctAnswer: algebraTask.metadata.solution, // The final solution
+    metadata: algebraTask.metadata,
   };
 }
 
 /**
  * Generate a task based on module and level
+ * For algebra tasks, optionally pass sessionHashes to prevent duplicates within session
  */
-export function generateTask(module: Module, level: number): Task {
+export function generateTask(
+  module: Module,
+  level: number,
+  sessionHashes?: Set<string>,
+): Task {
   // Validate level
   if (level < 1 || level > 5) {
     level = Math.max(1, Math.min(5, level));
@@ -199,7 +178,7 @@ export function generateTask(module: Module, level: number): Task {
     case "fractions":
       return generateFractionsTask(level);
     case "algebra":
-      return generateAlgebraTask(level);
+      return generateAlgebraTask(level, sessionHashes);
     default:
       return generateMentalMathTask(level);
   }
