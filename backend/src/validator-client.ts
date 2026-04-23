@@ -87,7 +87,10 @@ export function classifyError(
   }
 
   // Parse error or syntax error
-  if (validatorResponse.error_code?.includes("parse") || validatorResponse.error_code?.includes("syntax")) {
+  if (
+    validatorResponse.error_code?.includes("parse") ||
+    validatorResponse.error_code?.includes("syntax")
+  ) {
     return {
       type: "SYNTAX_ERROR",
       description:
@@ -124,7 +127,10 @@ export function classifyError(
       }
 
       // Check if operation was only applied to one side
-      if (currentLhs.trim() !== proposedLhs.trim() && currentRhs.trim() === proposedRhs.trim()) {
+      if (
+        currentLhs.trim() !== proposedLhs.trim() &&
+        currentRhs.trim() === proposedRhs.trim()
+      ) {
         return {
           type: "RULE_VIOLATION",
           description:
@@ -133,7 +139,10 @@ export function classifyError(
         };
       }
 
-      if (currentLhs.trim() === proposedLhs.trim() && currentRhs.trim() !== proposedRhs.trim()) {
+      if (
+        currentLhs.trim() === proposedLhs.trim() &&
+        currentRhs.trim() !== proposedRhs.trim()
+      ) {
         return {
           type: "RULE_VIOLATION",
           description:
@@ -176,7 +185,10 @@ export async function validateEquivalentEquations(
   variables: string[] = ["x"],
 ): Promise<boolean> {
   try {
-    const response = await axios.post<{ is_valid: boolean; are_equivalent: boolean }>(
+    const response = await axios.post<{
+      is_valid: boolean;
+      are_equivalent: boolean;
+    }>(
       `${VALIDATOR_URL}/validate/equation`,
       {
         left: equation1,
@@ -198,7 +210,9 @@ export async function validateEquivalentEquations(
  */
 export async function checkValidatorHealth(): Promise<boolean> {
   try {
-    const response = await axios.get(`${VALIDATOR_URL}/health`, { timeout: 3000 });
+    const response = await axios.get(`${VALIDATOR_URL}/health`, {
+      timeout: 3000,
+    });
     return response.status === 200;
   } catch (error) {
     console.error("Validator health check failed:", error);

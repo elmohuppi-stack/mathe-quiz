@@ -57,7 +57,7 @@ export default function TrainingPage() {
     };
 
     startTraining();
-  }, [token, module, navigate, level, t]);
+  }, [token, module, navigate, level]);
 
   const handleSessionEnd = () => {
     navigate("/dashboard");

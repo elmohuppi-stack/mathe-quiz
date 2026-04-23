@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { authApi } from "../lib/api";
 
 interface User {
   id: string;
@@ -11,7 +12,7 @@ interface AuthStore {
   isAuthenticated: boolean;
   setAuth: (user: User, token: string) => void;
   logout: () => void;
-  loadFromStorage: () => void;
+  loadFromStorage: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -31,15 +32,20 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ user: null, token: null, isAuthenticated: false });
   },
 
-  loadFromStorage: () => {
+  loadFromStorage: async () => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
+        // Verify token is still valid on the server
+        await authApi.verify();
         set({ token, user, isAuthenticated: true });
       } catch (e) {
-        console.error("Failed to parse user from storage:", e);
+        console.error("Token verification failed:", e);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        set({ user: null, token: null, isAuthenticated: false });
       }
     }
   },

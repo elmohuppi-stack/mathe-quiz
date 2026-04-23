@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "./store/authStore";
 import { useLanguageStore } from "./i18n/useTranslation";
 import { LoginPage } from "./pages/LoginPage";
@@ -13,11 +13,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
-function App() {
-  useEffect(() => {
-    useAuthStore.getState().loadFromStorage();
-    useLanguageStore.getState().loadFromStorage();
-  }, []);
+function AppContent() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
     <BrowserRouter>
@@ -40,10 +37,36 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route
+          path="/"
+          element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />}
+        />
       </Routes>
     </BrowserRouter>
   );
+}
+
+function App() {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      await useAuthStore.getState().loadFromStorage();
+      useLanguageStore.getState().loadFromStorage();
+      setIsLoaded(true);
+    };
+    initializeApp();
+  }, []);
+
+  if (!isLoaded) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  return <AppContent />;
 }
 
 export default App;

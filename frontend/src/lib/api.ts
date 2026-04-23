@@ -44,6 +44,7 @@ export const authApi = {
   register: (data: RegisterRequest) =>
     api.post<AuthResponse>("/auth/register", data),
   login: (data: LoginRequest) => api.post<AuthResponse>("/auth/login", data),
+  verify: () => api.get("/auth/me"),
   health: () => api.get("/health"),
 };
 

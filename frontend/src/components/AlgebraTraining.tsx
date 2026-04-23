@@ -89,7 +89,7 @@ export default function AlgebraTraining({
     };
 
     loadTask();
-  }, [level, session.sessionId, t]);
+  }, [level, session.sessionId]);
 
   // Validate step as user types
   const handleStepChange = (value: string) => {
@@ -134,7 +134,10 @@ export default function AlgebraTraining({
         setSteps(newSteps);
 
         // Check if we reached the final answer
-        if (userStep.trim().replace(/\s/g, "") === task.correctAnswer.replace(/\s/g, "")) {
+        if (
+          userStep.trim().replace(/\s/g, "") ===
+          task.correctAnswer.replace(/\s/g, "")
+        ) {
           // Task complete
           setCorrectCount((prev) => prev + 1);
           setTaskCount((prev) => prev + 1);
@@ -154,9 +157,7 @@ export default function AlgebraTraining({
                 });
                 const newTask = response.data;
                 setTask(newTask);
-                setCurrentEquation(
-                  newTask.prompt || newTask.taskData.equation,
-                );
+                setCurrentEquation(newTask.prompt || newTask.taskData.equation);
                 setSteps([newTask.prompt || newTask.taskData.equation]);
                 setUserStep("");
                 setStepStartTime(Date.now());
@@ -285,7 +286,8 @@ export default function AlgebraTraining({
           </p>
           {task.metadata?.rule && (
             <p className="text-xs text-gray-600 mt-2">
-              {t("training.rule")}: <span className="font-semibold">{task.metadata.rule}</span>
+              {t("training.rule")}:{" "}
+              <span className="font-semibold">{task.metadata.rule}</span>
             </p>
           )}
         </div>
@@ -308,7 +310,8 @@ export default function AlgebraTraining({
           )}
           {stepValidation?.errorType && (
             <div className="mt-2 text-xs bg-opacity-50 bg-gray-600 text-gray-100 p-2 rounded">
-              {t("training.error_type")}: <strong>{stepValidation.errorType}</strong>
+              {t("training.error_type")}:{" "}
+              <strong>{stepValidation.errorType}</strong>
             </div>
           )}
         </div>
