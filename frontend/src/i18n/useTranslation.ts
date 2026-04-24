@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { create } from "zustand";
 import en from "./en.json";
 import de from "./de.json";
@@ -48,9 +49,12 @@ export function useTranslation() {
   ) as Language;
 
   // Return a t function that uses the current language
-  const t = (key: string): string => {
-    return translations[language][key] ?? key;
-  };
+  const t = useCallback(
+    (key: string): string => {
+      return translations[language][key] ?? key;
+    },
+    [language],
+  );
 
   return { t };
 }

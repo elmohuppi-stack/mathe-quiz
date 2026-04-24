@@ -1,10 +1,12 @@
-.PHONY: help build up start down stop logs clean restart db-reset db-seed test-unit
+.PHONY: help build up start down stop logs clean restart db-reset db-seed test-unit dev dev-up dev-start dev-down dev-restart dev-logs dev-logs-backend dev-logs-frontend dev-logs-validator
 
 # Colors for output
 BLUE=\033[0;34m
 GREEN=\033[0;32m
 YELLOW=\033[0;33m
 NC=\033[0m # No Color
+COMPOSE=docker-compose
+DEV_COMPOSE=$(COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml
 
 help:
 	@echo "$(BLUE)Mathe-Quiz - Docker Management$(NC)"
@@ -16,6 +18,11 @@ help:
 	@echo "  $(YELLOW)make down$(NC)           - Stop and remove containers"
 	@echo "  $(YELLOW)make stop$(NC)           - Stop containers (keep data)"
 	@echo "  $(YELLOW)make restart$(NC)        - Restart all containers"
+	@echo "  $(YELLOW)make dev$(NC)            - Alias for fast dev mode with live reload"
+	@echo "  $(YELLOW)make dev-up$(NC)         - Start fast dev mode with live reload"
+	@echo "  $(YELLOW)make dev-restart$(NC)    - Restart fast dev mode containers"
+	@echo "  $(YELLOW)make dev-down$(NC)       - Stop fast dev mode containers"
+	@echo "  $(YELLOW)make dev-logs$(NC)       - Show logs from fast dev mode"
 	@echo "  $(YELLOW)make logs$(NC)           - Show logs from all containers"
 	@echo "  $(YELLOW)make logs-backend$(NC)   - Show backend logs"
 	@echo "  $(YELLOW)make logs-frontend$(NC)  - Show frontend logs"
@@ -30,6 +37,7 @@ help:
 	@echo ""
 	@echo "$(GREEN)Quick Start:$(NC)"
 	@echo "  1. $(YELLOW)make up$(NC) - Start everything"
+	@echo "     or $(YELLOW)make dev-up$(NC) - Start live-reload development mode"
 	@echo "  2. Open http://localhost:3031 in your browser"
 	@echo "  3. $(YELLOW)make logs$(NC) - Watch logs"
 	@echo "  4. $(YELLOW)make down$(NC) - Stop everything"
@@ -38,12 +46,12 @@ help:
 # Build Docker images
 build:
 	@echo "$(GREEN)Building Docker images...$(NC)"
-	docker-compose build
+	$(COMPOSE) build
 
 # Start all containers (rebuild if needed)
 up: build
 	@echo "$(GREEN)Starting containers...$(NC)"
-	docker-compose up -d
+	$(COMPOSE) up -d
 	@echo "$(GREEN)✓ All containers started!$(NC)"
 	@echo "$(BLUE)Access the application at: http://localhost:3031$(NC)"
 	@echo "$(BLUE)API available at: http://localhost:3032$(NC)"
@@ -53,57 +61,92 @@ up: build
 # Start containers without rebuilding
 start:
 	@echo "$(GREEN)Starting containers...$(NC)"
-	docker-compose up -d
+	$(COMPOSE) up -d
 	@echo "$(GREEN)✓ Containers started!$(NC)"
+
+# Start live-reload development containers
+dev: dev-up
+
+dev-up: build
+	@echo "$(GREEN)Starting live-reload development containers...$(NC)"
+	$(DEV_COMPOSE) up -d
+	@echo "$(GREEN)✓ Dev mode started!$(NC)"
+	@echo "$(BLUE)Code changes now reload without make build / make restart.$(NC)"
+
+# Start live-reload development containers without rebuilding
+dev-start:
+	@echo "$(GREEN)Starting live-reload development containers...$(NC)"
+	$(DEV_COMPOSE) up -d
+	@echo "$(GREEN)✓ Dev mode started!$(NC)"
 
 # Stop containers but keep data
 stop:
 	@echo "$(YELLOW)Stopping containers...$(NC)"
-	docker-compose stop
+	$(COMPOSE) stop
 	@echo "$(GREEN)✓ Containers stopped (data preserved)$(NC)"
 
 # Stop and remove containers
 down:
 	@echo "$(YELLOW)Stopping and removing containers...$(NC)"
-	docker-compose down
+	$(COMPOSE) down
 	@echo "$(GREEN)✓ Containers removed$(NC)"
+
+dev-down:
+	@echo "$(YELLOW)Stopping live-reload development containers...$(NC)"
+	$(DEV_COMPOSE) down
+	@echo "$(GREEN)✓ Dev mode containers removed$(NC)"
 
 # Restart all containers
 restart: down start
 	@echo "$(GREEN)✓ Containers restarted!$(NC)"
 
+dev-restart: dev-down dev-start
+	@echo "$(GREEN)✓ Dev mode containers restarted!$(NC)"
+
 # View logs from all containers
 logs:
-	docker-compose logs -f
+	$(COMPOSE) logs -f
+
+dev-logs:
+	$(DEV_COMPOSE) logs -f
 
 # View backend logs
 logs-backend:
-	docker-compose logs -f backend
+	$(COMPOSE) logs -f backend
+
+dev-logs-backend:
+	$(DEV_COMPOSE) logs -f backend
 
 # View frontend logs
 logs-frontend:
-	docker-compose logs -f frontend
+	$(COMPOSE) logs -f frontend
+
+dev-logs-frontend:
+	$(DEV_COMPOSE) logs -f frontend
 
 # View validator logs
 logs-validator:
-	docker-compose logs -f validator
+	$(COMPOSE) logs -f validator
+
+dev-logs-validator:
+	$(DEV_COMPOSE) logs -f validator
 
 # View database logs
 logs-db:
-	docker-compose logs -f postgres
+	$(COMPOSE) logs -f postgres
 
 # Show running containers
 ps:
 	@echo "$(GREEN)Running containers:$(NC)"
-	docker-compose ps
+	$(COMPOSE) ps
 
 # Shell into backend container
 shell-backend:
-	docker-compose exec backend sh
+	$(COMPOSE) exec backend sh
 
 # Shell into database container
 shell-db:
-	docker-compose exec postgres psql -U mathe_user -d mathe_quiz
+	$(COMPOSE) exec postgres psql -U mathe_user -d mathe_quiz
 
 # Reset database (remove volume and recreate)
 db-reset: down
@@ -111,7 +154,7 @@ db-reset: down
 	docker volume rm mathe-quiz_postgres_data 2>/dev/null || true
 	@echo "$(GREEN)✓ Database volume removed$(NC)"
 	@echo "$(GREEN)Starting fresh database...$(NC)"
-	docker-compose up -d postgres
+	$(COMPOSE) up -d postgres
 	@sleep 5
 	@echo "$(GREEN)✓ New database created!$(NC)"
 
@@ -132,7 +175,7 @@ health:
 	@echo "Frontend (3031): $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3031 || echo 'DOWN')"
 	@echo "Backend (3032): $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3032/health || echo 'DOWN')"
 	@echo "Validator (3001): $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/health || echo 'DOWN')"
-	@echo "Database (5432): $$(docker-compose exec -T postgres pg_isready -U mathe_user 2>/dev/null || echo 'DOWN')"
+	@echo "Database (5432): $$( $(COMPOSE) exec -T postgres pg_isready -U mathe_user 2>/dev/null || echo 'DOWN')"
 
 # Default target
 .DEFAULT_GOAL := help

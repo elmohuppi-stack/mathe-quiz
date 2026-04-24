@@ -68,6 +68,27 @@ Danach sind die Services standardmaessig erreichbar unter:
 - Validator: `http://localhost:3001`
 - PostgreSQL: `localhost:5432`
 
+Fuer den normalen Entwicklungsalltag mit vielen Codeaenderungen gibt es jetzt einen deutlich schnelleren Weg:
+
+```bash
+make dev-up
+```
+
+Der Dev-Modus nutzt dieselben Container, mountet aber Frontend-, Backend- und Validator-Code direkt als Volumes und startet die Prozesse im Watch-Modus. Das bedeutet:
+
+- normale Codeaenderungen brauchen kein `make build`
+- bei Frontend-, Backend- und Validator-Code reicht Speichern
+- nur bei Aenderungen an Abhaengigkeiten, Dockerfiles oder Basis-Image-Schichten ist ein neuer Build noetig
+
+Nuetzliche Dev-Befehle:
+
+```bash
+make dev-up
+make dev-logs
+make dev-restart
+make dev-down
+```
+
 ### Workspace-Skripte
 
 Nuetzliche Befehle im Monorepo:

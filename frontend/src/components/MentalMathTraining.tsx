@@ -69,27 +69,16 @@ function formatSeconds(timeTakenMs: number): string {
   return `${(timeTakenMs / 1000).toFixed(1)}s`;
 }
 
-function calculateStreak(attempts: AttemptEntry[]): number {
-  let streak = 0;
-
-  for (const attempt of attempts) {
-    if (!attempt.isCorrect) {
-      break;
-    }
-
-    streak += 1;
-  }
-
-  return streak;
-}
-
 export default function MentalMathTraining({
   session,
   level,
   onSessionEnd,
 }: MentalMathTrainingProps) {
   const { t } = useTranslation();
+  const answerInputRef = useRef<HTMLInputElement | null>(null);
   const nextTaskTimeoutRef = useRef<number | null>(null);
+  const notificationTimeoutRef = useRef<number | null>(null);
+  const [showGuidance, setShowGuidance] = useState(true);
   const [task, setTask] = useState<Task | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -103,6 +92,10 @@ export default function MentalMathTraining({
     type: "success" | "error" | null;
     message: string;
   }>({ type: null, message: "" });
+  const [notification, setNotification] = useState<{
+    type: "success" | null;
+    message: string;
+  }>({ type: null, message: "" });
 
   const totalTimeTaken = attempts.reduce(
     (sum, attempt) => sum + attempt.timeTakenMs,
@@ -110,8 +103,31 @@ export default function MentalMathTraining({
   );
   const averageTimeTaken =
     attempts.length > 0 ? totalTimeTaken / attempts.length : 0;
-  const streak = calculateStreak(attempts);
   const levelDescription = LEVEL_DESCRIPTIONS[level] || LEVEL_DESCRIPTIONS[1];
+
+  const focusAnswerInput = () => {
+    window.requestAnimationFrame(() => {
+      answerInputRef.current?.focus();
+    });
+  };
+
+  const showSuccessNotification = (message: string) => {
+    if (notificationTimeoutRef.current !== null) {
+      window.clearTimeout(notificationTimeoutRef.current);
+    }
+
+    setNotification({ type: "success", message });
+    notificationTimeoutRef.current = window.setTimeout(() => {
+      setNotification({ type: null, message: "" });
+      notificationTimeoutRef.current = null;
+    }, 900);
+  };
+
+  useEffect(() => {
+    setShowGuidance(
+      localStorage.getItem("mental-math-training-help-collapsed") !== "true",
+    );
+  }, []);
 
   const loadTask = async () => {
     try {
@@ -125,6 +141,7 @@ export default function MentalMathTraining({
       setTask(response.data);
       setStartTime(Date.now());
       setFeedback({ type: null, message: "" });
+      focusAnswerInput();
     } catch (error) {
       setFeedback({
         type: "error",
@@ -142,8 +159,22 @@ export default function MentalMathTraining({
       if (nextTaskTimeoutRef.current !== null) {
         window.clearTimeout(nextTaskTimeoutRef.current);
       }
+      if (notificationTimeoutRef.current !== null) {
+        window.clearTimeout(notificationTimeoutRef.current);
+      }
     };
   }, [level, session.sessionId]);
+
+  const handleToggleGuidance = () => {
+    setShowGuidance((prev) => {
+      const next = !prev;
+      localStorage.setItem(
+        "mental-math-training-help-collapsed",
+        String(!next),
+      );
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,10 +207,8 @@ export default function MentalMathTraining({
 
       if (isCorrect) {
         setCorrectCount((prev) => prev + 1);
-        setFeedback({
-          type: "success",
-          message: t("training.correct"),
-        });
+        setFeedback({ type: null, message: "" });
+        showSuccessNotification(t("training.correct"));
       } else {
         setFeedback({
           type: "error",
@@ -207,9 +236,13 @@ export default function MentalMathTraining({
         window.clearTimeout(nextTaskTimeoutRef.current);
       }
 
-      nextTaskTimeoutRef.current = window.setTimeout(() => {
+      if (isCorrect) {
         void loadTask();
-      }, 1200);
+      } else {
+        nextTaskTimeoutRef.current = window.setTimeout(() => {
+          void loadTask();
+        }, 1200);
+      }
     } catch (error: any) {
       setFeedback({
         type: "error",
@@ -251,9 +284,17 @@ export default function MentalMathTraining({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-        <section className="relative overflow-hidden rounded-3xl border border-sky-100 bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.32),_transparent_36%),linear-gradient(135deg,_#eff6ff_0%,_#f8fafc_48%,_#ecfeff_100%)] p-6 shadow-sm">
+    <div className="space-y-5">
+      {notification.type ? (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-lg backdrop-blur">
+            {notification.message}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.62fr_0.38fr]">
+        <section className="relative overflow-hidden rounded-3xl border border-sky-100 bg-[radial-gradient(circle_at_top_left,_rgba(125,211,252,0.32),_transparent_36%),linear-gradient(135deg,_#eff6ff_0%,_#f8fafc_48%,_#ecfeff_100%)] p-5 shadow-sm">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
             <span className="rounded-full bg-white/80 px-3 py-1 shadow-sm">
               {t("modules.mental-math")}
@@ -263,12 +304,12 @@ export default function MentalMathTraining({
             </span>
           </div>
 
-          <div className="mt-6 flex items-start justify-between gap-4">
+          <div className="mt-5 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-slate-500">
                 {t("training.current_goal")}
               </p>
-              <h2 className="mt-2 font-mono text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">
+              <h2 className="mt-2 font-mono text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
                 {task.taskData.question}
               </h2>
             </div>
@@ -280,106 +321,137 @@ export default function MentalMathTraining({
             </div>
           </div>
 
-          <div className="mt-8 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-slate-100">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                {t("training.level_focus")}
-              </p>
-              <p className="mt-2 text-sm font-semibold text-slate-900">
-                {t(levelDescription.focusKey)}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-white/80 p-4 shadow-sm ring-1 ring-slate-100">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                {t("training.mental_math_number_range")}
-              </p>
-              <p className="mt-2 text-sm font-semibold text-slate-900">
-                {t(levelDescription.rangeKey)}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-slate-900 p-4 text-white shadow-sm">
-              <p className="text-xs uppercase tracking-wide text-sky-100">
-                {t("training.mental_math_streak")}
-              </p>
-              <p className="mt-2 text-3xl font-bold">{streak}</p>
-              <p className="mt-1 text-xs text-sky-100/80">
-                {t("training.mental_math_streak_desc")}
-              </p>
-            </div>
+          <div className="mt-5">
+            {showGuidance ? (
+              <div className="rounded-2xl border border-sky-200 bg-white/75 p-4 shadow-sm backdrop-blur">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
+                      {t("training.how_to_solve")}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-600">
+                      {t("training.mental_math_goal_body")}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleGuidance}
+                    className="whitespace-nowrap text-xs font-semibold text-sky-800 hover:text-sky-950"
+                  >
+                    {t("training.hide_help")}
+                  </button>
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl bg-white/90 p-4 shadow-sm ring-1 ring-slate-100">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      {t("training.level_focus")}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {t(levelDescription.focusKey)}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white/90 p-4 shadow-sm ring-1 ring-slate-100">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      {t("training.mental_math_number_range")}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {t(levelDescription.rangeKey)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-sky-200 bg-white/75 px-4 py-3 shadow-sm backdrop-blur">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-sky-100 text-sm font-bold text-sky-900">
+                    ?
+                  </span>
+                  <p className="truncate text-sm text-sky-900">
+                    {t("training.help_collapsed")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleGuidance}
+                  className="whitespace-nowrap text-xs font-semibold text-sky-800 hover:text-sky-950"
+                >
+                  {t("training.show_help")}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="grid grid-cols-2 gap-4 lg:grid-cols-1">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-1">
+          <div className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               {t("training.tasks_solved")}
             </p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">
-              {taskCount}
-            </p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{taskCount}</p>
           </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-2.5 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-emerald-700">
               {t("training.mental_math_accuracy")}
             </p>
-            <p className="mt-2 text-3xl font-bold text-emerald-900">
+            <p className="mt-1 text-xl font-bold text-emerald-900">
               {taskCount > 0 ? Math.round((correctCount / taskCount) * 100) : 0}
               %
             </p>
           </div>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-2.5 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-amber-700">
               {t("training.avg_time")}
             </p>
-            <p className="mt-2 text-3xl font-bold text-amber-900">
+            <p className="mt-1 text-xl font-bold text-amber-900">
               {averageTimeTaken > 0 ? formatSeconds(averageTimeTaken) : "0.0s"}
             </p>
           </div>
-          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-2.5 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-sky-700">
               {t("training.mental_math_last_answer")}
             </p>
-            <p className="mt-2 text-3xl font-bold text-sky-900">
+            <p className="mt-1 text-xl font-bold text-sky-900">
               {lastTimeTaken > 0 ? formatSeconds(lastTimeTaken) : "-"}
             </p>
           </div>
         </section>
       </div>
 
-      {feedback.type && (
-        <div
-          className={`rounded-2xl border p-4 text-sm font-medium shadow-sm ${
-            feedback.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-rose-200 bg-rose-50 text-rose-700"
-          }`}
-        >
-          {feedback.message}
-        </div>
-      )}
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_0.72fr]">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="grid gap-5 xl:grid-cols-[1fr_0.72fr]">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <label className="block text-sm font-semibold text-slate-800">
-                  {t("training.your_answer")}
-                </label>
-                <span className="text-xs text-slate-500">
-                  {t("training.mental_math_answer_hint")}
-                </span>
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start">
+              <div className="max-w-2xl">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="block text-sm font-semibold text-slate-800">
+                    {t("training.your_answer")}
+                  </label>
+                  <span className="text-xs text-slate-500">
+                    {t("training.mental_math_answer_hint")}
+                  </span>
+                </div>
+                <input
+                  ref={answerInputRef}
+                  type="text"
+                  inputMode="decimal"
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  placeholder={t("training.enter_answer")}
+                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-5 py-4 text-2xl font-mono text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
+                  disabled={isSubmitting}
+                  autoFocus
+                />
               </div>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                placeholder={t("training.enter_answer")}
-                className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-5 py-4 text-2xl font-mono text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
-                disabled={isSubmitting}
-                autoFocus
-              />
+
+              <div className="min-h-[5.5rem] lg:pt-7">
+                {feedback.type === "error" ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700 shadow-sm">
+                    {feedback.message}
+                  </div>
+                ) : (
+                  <div className="hidden lg:block" />
+                )}
+              </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -420,7 +492,7 @@ export default function MentalMathTraining({
           </form>
         </section>
 
-        <aside className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-lg font-bold text-slate-900">
               {t("training.mental_math_recent_attempts")}

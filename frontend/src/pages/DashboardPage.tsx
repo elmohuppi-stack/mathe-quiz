@@ -102,33 +102,6 @@ export function DashboardPage() {
 
     let isCancelled = false;
 
-    const loadModuleHistory = async () => {
-      try {
-        setIsHistoryLoading(true);
-        setHistoryError("");
-        const response = await api.get<ModuleHistorySummary>(
-          `/answers/history/${selectedHistoryModule}`,
-          {
-            params: { limit: 18 },
-          },
-        );
-
-        if (!isCancelled) {
-          setModuleHistory(response.data);
-        }
-      } catch (error: any) {
-        if (!isCancelled) {
-          setHistoryError(
-            error.response?.data?.error || t("errors.general.internal_error"),
-          );
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsHistoryLoading(false);
-        }
-      }
-    };
-
     const loadModuleProgress = async () => {
       try {
         setIsProgressLoading(true);
@@ -159,8 +132,48 @@ export function DashboardPage() {
       }
     };
 
-    loadModuleHistory();
     loadModuleProgress();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [t, user]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadModuleHistory = async () => {
+      try {
+        setIsHistoryLoading(true);
+        setHistoryError("");
+        const response = await api.get<ModuleHistorySummary>(
+          `/answers/history/${selectedHistoryModule}`,
+          {
+            params: { limit: 18 },
+          },
+        );
+
+        if (!isCancelled) {
+          setModuleHistory(response.data);
+        }
+      } catch (error: any) {
+        if (!isCancelled) {
+          setHistoryError(
+            error.response?.data?.error || t("errors.general.internal_error"),
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsHistoryLoading(false);
+        }
+      }
+    };
+
+    loadModuleHistory();
 
     return () => {
       isCancelled = true;
@@ -192,6 +205,20 @@ export function DashboardPage() {
     ) / Object.values(moduleProgress).length;
 
   const selectedModuleLabel = t(`modules.${selectedHistoryModule}`);
+  const buildHistoryChartTooltip = (step: ModuleHistoryStep) => {
+    const prompt = step.prompt || step.currentEquation;
+    const response = step.response || step.proposedStep;
+    const status = step.isCorrect
+      ? t("dashboard.status_correct")
+      : t("dashboard.status_incorrect");
+
+    return [
+      `${prompt} -> ${response}`,
+      `${t("dashboard.history_date")}: ${formatTimestamp(step.createdAt)}`,
+      `${t("dashboard.history_time_taken")}: ${formatDuration(step.timeTakenMs)}`,
+      `${t("dashboard.history_status")}: ${status}`,
+    ].join("\n");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -307,45 +334,8 @@ export function DashboardPage() {
           )}
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded shadow hover:shadow-lg transition">
-            <h3 className="text-xl font-bold mb-2">
-              {t("modules.mental-math")}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {t("modules.mental-math_desc")}
-            </p>
-            <button
-              onClick={() => navigate("/training/mental-math")}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-            >
-              {t("common.startTraining")}
-            </button>
-          </div>
-          <div className="bg-white p-6 rounded shadow hover:shadow-lg transition">
-            <h3 className="text-xl font-bold mb-2">{t("modules.fractions")}</h3>
-            <p className="text-gray-600 mb-4">{t("modules.fractions_desc")}</p>
-            <button
-              onClick={() => navigate("/training/fractions")}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-            >
-              {t("common.startTraining")}
-            </button>
-          </div>
-          <div className="bg-white p-6 rounded shadow hover:shadow-lg transition">
-            <h3 className="text-xl font-bold mb-2">{t("modules.algebra")}</h3>
-            <p className="text-gray-600 mb-4">{t("modules.algebra_desc")}</p>
-            <button
-              onClick={() => navigate("/training/algebra")}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-            >
-              {t("common.startTraining")}
-            </button>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6 mt-8">
-          <section className="bg-white p-6 rounded shadow">
+          <section className="relative min-h-[24rem] bg-white p-6 rounded shadow">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">
@@ -436,7 +426,7 @@ export function DashboardPage() {
                         <div
                           key={step.id}
                           className="flex-1 flex flex-col items-center justify-end gap-2 min-w-0"
-                          title={`${step.prompt || step.currentEquation} -> ${step.response || step.proposedStep}`}
+                          title={buildHistoryChartTooltip(step)}
                         >
                           <div
                             className={`w-full rounded-t-md ${
@@ -459,7 +449,7 @@ export function DashboardPage() {
             )}
           </section>
 
-          <section className="bg-white p-6 rounded shadow">
+          <section className="relative min-h-[24rem] bg-white p-6 rounded shadow">
             <h3 className="text-xl font-bold text-gray-900">
               {selectedModuleLabel} {t("dashboard.recent_history_suffix")}
             </h3>
