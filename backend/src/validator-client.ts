@@ -28,6 +28,37 @@ export interface ErrorClassification {
   severity: "critical" | "warning";
 }
 
+export function normalizeAlgebraStep(step: string): string {
+  return step.trim().replace(/\s/g, "");
+}
+
+export function resolveAlgebraStepValidation(
+  proposedStep: string,
+  expectedStep: string,
+  validatorResponse: ValidatorStepResponse,
+): { stepValidation: ValidatorStepResponse; isExactMatch: boolean } {
+  const isExactMatch =
+    normalizeAlgebraStep(proposedStep) === normalizeAlgebraStep(expectedStep);
+
+  if (!isExactMatch || validatorResponse.is_valid) {
+    return {
+      stepValidation: validatorResponse,
+      isExactMatch,
+    };
+  }
+
+  return {
+    isExactMatch,
+    stepValidation: {
+      ...validatorResponse,
+      is_valid: true,
+      are_equivalent: true,
+      error_code: undefined,
+      message: "Step matches expected next step",
+    },
+  };
+}
+
 /**
  * Validate an algebra step
  * Returns whether the step is mathematically correct and equivalent

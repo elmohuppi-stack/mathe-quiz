@@ -1,5 +1,10 @@
 import prisma from "./db.js";
 import { Module } from "./tasks.js";
+import {
+  aggregateAlgebraTaskEntries,
+  summarizeAlgebraTaskEntries,
+  type RawAlgebraHistoryRow,
+} from "./algebra-history.js";
 
 export interface SessionData {
   id?: string;
@@ -85,40 +90,7 @@ export async function endSession(
     },
   });
 
-  const existingProgress = await prisma.moduleProgress.findUnique({
-    where: {
-      userId_module: {
-        userId,
-        module: session.module,
-      },
-    },
-  });
-
-  const nextAccuracy = Math.max(
-    existingProgress?.accuracy ?? 0,
-    session.accuracy ?? 0,
-  );
-
-  // Update ModuleProgress
-  const moduleProgress = await prisma.moduleProgress.upsert({
-    where: {
-      userId_module: {
-        userId,
-        module: session.module,
-      },
-    },
-    create: {
-      userId,
-      module: session.module,
-      level: existingProgress?.level ?? 1,
-      accuracy: nextAccuracy,
-      totalAnswers: totalTasks,
-    },
-    update: {
-      accuracy: nextAccuracy,
-      totalAnswers: { increment: totalTasks },
-    },
-  });
+  await syncModuleProgress(userId, session.module as Module);
 
   return {
     sessionId: session.id,
@@ -158,6 +130,62 @@ export async function getModuleProgress(userId: string, module: Module) {
  * This keeps dashboard stats up to date even if a session is not explicitly ended.
  */
 export async function syncModuleProgress(userId: string, module: Module) {
+  if (module === "algebra") {
+    const [algebraAnswers, existingProgress] = await Promise.all([
+      prisma.answer.findMany({
+        where: {
+          userId,
+          session: {
+            module,
+          },
+        },
+        include: {
+          session: {
+            select: {
+              startedAt: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      }) as Promise<RawAlgebraHistoryRow[]>,
+      prisma.moduleProgress.findUnique({
+        where: {
+          userId_module: {
+            userId,
+            module,
+          },
+        },
+      }),
+    ]);
+
+    const summary = summarizeAlgebraTaskEntries(
+      aggregateAlgebraTaskEntries(algebraAnswers, Number.MAX_SAFE_INTEGER),
+    );
+
+    return prisma.moduleProgress.upsert({
+      where: {
+        userId_module: {
+          userId,
+          module,
+        },
+      },
+      create: {
+        userId,
+        module,
+        level: existingProgress?.level ?? 1,
+        accuracy: summary.accuracy,
+        totalAnswers: summary.totalSubmissions,
+      },
+      update: {
+        level: existingProgress?.level ?? 1,
+        accuracy: summary.accuracy,
+        totalAnswers: summary.totalSubmissions,
+      },
+    });
+  }
+
   const [totalAnswers, correctAnswers, existingProgress] = await Promise.all([
     prisma.answer.count({
       where: {

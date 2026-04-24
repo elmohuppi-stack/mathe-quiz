@@ -1,23 +1,46 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/authStore";
-import { useTranslation } from "../i18n/useTranslation";
 import { LanguageSelector } from "../components/LanguageSelector";
+import { useTranslation } from "../i18n/useTranslation";
 import api from "../lib/api";
+import { useAuthStore } from "../store/authStore";
 
 type ModuleKey = "mental-math" | "fractions" | "algebra";
 
+interface AlgebraHistoryAttempt {
+  id: string;
+  createdAt: string;
+  currentEquation: string;
+  response: string;
+  expectedAnswer: string;
+  expectedFirstStep: string;
+  transformationType: string | null;
+  isCorrect: boolean;
+  errorType: string | null;
+  timeTakenMs: number;
+}
+
 interface ModuleHistoryStep {
   id: string;
+  sessionId?: string;
+  taskId?: string;
   createdAt: string;
   prompt: string;
   response: string;
   expectedAnswer: string;
   currentEquation: string;
   proposedStep: string;
+  expectedFirstStep?: string;
   transformationType: string | null;
   isCorrect: boolean;
+  errorType?: string | null;
   timeTakenMs: number;
+  steps?: AlgebraHistoryAttempt[];
+  stepCount?: number;
+  correctStepCount?: number;
+  taskAccuracy?: number;
+  totalTimeMs?: number;
+  isTaskComplete?: boolean;
 }
 
 interface ModuleHistorySummary {
@@ -205,9 +228,42 @@ export function DashboardPage() {
     ) / Object.values(moduleProgress).length;
 
   const selectedModuleLabel = t(`modules.${selectedHistoryModule}`);
+  const historyEntriesLabel =
+    selectedHistoryModule === "algebra"
+      ? t("dashboard.history_saved_tasks")
+      : t("dashboard.history_saved_steps");
+  const historyEmptyMessage =
+    selectedHistoryModule === "algebra"
+      ? t("dashboard.history_empty_algebra")
+      : t("dashboard.history_empty_generic");
+  const historyChartCaption =
+    selectedHistoryModule === "algebra"
+      ? t("dashboard.history_chart_caption_algebra")
+      : t("dashboard.history_chart_caption_generic");
+  const historyOverviewMessage =
+    selectedHistoryModule === "algebra"
+      ? t("dashboard.history_overview_algebra")
+      : t("dashboard.history_overview_generic");
+
   const buildHistoryChartTooltip = (step: ModuleHistoryStep) => {
     const prompt = step.prompt || step.currentEquation;
     const response = step.response || step.proposedStep;
+
+    if (selectedHistoryModule === "algebra") {
+      const status = step.isTaskComplete
+        ? t("dashboard.status_completed")
+        : t("dashboard.status_incomplete");
+
+      return [
+        `${prompt} -> ${response}`,
+        `${t("dashboard.history_date")}: ${formatTimestamp(step.createdAt)}`,
+        `${t("dashboard.algebra_total_time")}: ${formatDuration(step.totalTimeMs ?? step.timeTakenMs)}`,
+        `${t("dashboard.history_status")}: ${status}`,
+        `${t("dashboard.algebra_step_count")}: ${step.stepCount ?? step.steps?.length ?? 0}`,
+        `${t("dashboard.algebra_error_free")}: ${Math.round(step.taskAccuracy ?? 0)}%`,
+      ].join("\n");
+    }
+
     const status = step.isCorrect
       ? t("dashboard.status_correct")
       : t("dashboard.status_incorrect");
@@ -349,7 +405,7 @@ export function DashboardPage() {
                 <div className="grid grid-cols-3 gap-3 min-w-full md:min-w-[320px]">
                   <div className="bg-blue-50 rounded-lg p-3">
                     <p className="text-xs uppercase tracking-wide text-blue-700">
-                      {t("dashboard.history_saved_steps")}
+                      {historyEntriesLabel}
                     </p>
                     <p className="text-xl font-bold text-blue-900 mt-1">
                       {moduleHistory.totalSubmissions}
@@ -399,19 +455,21 @@ export function DashboardPage() {
             ) : historyError ? (
               <p className="text-red-600 mt-6">{historyError}</p>
             ) : !moduleHistory || moduleHistory.recentSteps.length === 0 ? (
-              <p className="text-gray-500 mt-6">
-                {t("dashboard.history_empty_generic")}
-              </p>
+              <p className="text-gray-500 mt-6">{historyEmptyMessage}</p>
             ) : (
               <div className="mt-6">
                 <div className="flex items-center gap-5 text-xs text-gray-600 mb-3">
                   <span className="inline-flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    {t("dashboard.history_correct_label")}
+                    {selectedHistoryModule === "algebra"
+                      ? t("dashboard.history_completed_label")
+                      : t("dashboard.history_correct_label")}
                   </span>
                   <span className="inline-flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
-                    {t("dashboard.history_incorrect_label")}
+                    {selectedHistoryModule === "algebra"
+                      ? t("dashboard.history_incomplete_label")
+                      : t("dashboard.history_incorrect_label")}
                   </span>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
@@ -421,6 +479,10 @@ export function DashboardPage() {
                         24,
                         Math.round((step.timeTakenMs / maxTimeTaken) * 120),
                       );
+                      const isPositive =
+                        selectedHistoryModule === "algebra"
+                          ? step.isTaskComplete
+                          : step.isCorrect;
 
                       return (
                         <div
@@ -430,7 +492,7 @@ export function DashboardPage() {
                         >
                           <div
                             className={`w-full rounded-t-md ${
-                              step.isCorrect ? "bg-emerald-500" : "bg-rose-400"
+                              isPositive ? "bg-emerald-500" : "bg-rose-400"
                             }`}
                             style={{ height: `${barHeight}px` }}
                           ></div>
@@ -443,7 +505,7 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-3">
-                  {t("dashboard.history_chart_caption_generic")}
+                  {historyChartCaption}
                 </p>
               </div>
             )}
@@ -454,7 +516,7 @@ export function DashboardPage() {
               {selectedModuleLabel} {t("dashboard.recent_history_suffix")}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              {t("dashboard.history_overview_generic")}
+              {historyOverviewMessage}
             </p>
 
             {isHistoryLoading ? (
@@ -462,9 +524,7 @@ export function DashboardPage() {
             ) : historyError ? (
               <p className="text-red-600 mt-6">{historyError}</p>
             ) : !moduleHistory || moduleHistory.recentSteps.length === 0 ? (
-              <p className="text-gray-500 mt-6">
-                {t("dashboard.history_empty_generic")}
-              </p>
+              <p className="text-gray-500 mt-6">{historyEmptyMessage}</p>
             ) : (
               <div className="mt-5 space-y-3">
                 {moduleHistory.recentSteps.slice(0, 8).map((step) => {
@@ -474,6 +534,9 @@ export function DashboardPage() {
                     translatableRuleKeys.includes(step.transformationType)
                       ? t(`rules.${step.transformationType}`)
                       : "";
+                  const algebraStatus = step.isTaskComplete
+                    ? t("dashboard.status_completed")
+                    : t("dashboard.status_incomplete");
 
                   return (
                     <article
@@ -486,36 +549,126 @@ export function DashboardPage() {
                         </p>
                         <span
                           className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                            step.isCorrect
+                            (
+                              selectedHistoryModule === "algebra"
+                                ? step.isTaskComplete
+                                : step.isCorrect
+                            )
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-rose-100 text-rose-800"
                           }`}
                         >
-                          {step.isCorrect
-                            ? t("dashboard.status_correct")
-                            : t("dashboard.status_incorrect")}
+                          {selectedHistoryModule === "algebra"
+                            ? algebraStatus
+                            : step.isCorrect
+                              ? t("dashboard.status_correct")
+                              : t("dashboard.status_incorrect")}
                         </span>
                       </div>
-                      <div className="mt-2 font-mono text-sm text-gray-800 space-y-1">
-                        <p>{step.prompt || step.currentEquation}</p>
-                        <p className="text-blue-700">
-                          {step.response || step.proposedStep}
-                        </p>
-                        {!step.isCorrect && step.expectedAnswer ? (
-                          <p className="text-xs text-gray-500 font-sans">
-                            {t("dashboard.history_expected_answer")}:{" "}
-                            {step.expectedAnswer}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-600">
-                        <span>{formatDuration(step.timeTakenMs)}</span>
-                        {translatedRule ? (
-                          <span className="font-semibold text-blue-700">
-                            {translatedRule}
-                          </span>
-                        ) : null}
-                      </div>
+
+                      {selectedHistoryModule === "algebra" ? (
+                        <>
+                          <div className="mt-2 font-mono text-sm text-gray-800 space-y-1">
+                            <p>{step.prompt || step.currentEquation}</p>
+                            <p className="text-blue-700">
+                              {step.response || step.proposedStep}
+                            </p>
+                          </div>
+                          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-600">
+                            <span>
+                              {t("dashboard.algebra_step_count")}:{" "}
+                              {step.stepCount ?? step.steps?.length ?? 0}
+                            </span>
+                            <span>
+                              {t("dashboard.algebra_error_free")}:{" "}
+                              {Math.round(step.taskAccuracy ?? 0)}%
+                            </span>
+                            <span>
+                              {t("dashboard.algebra_total_time")}:{" "}
+                              {formatDuration(
+                                step.totalTimeMs ?? step.timeTakenMs,
+                              )}
+                            </span>
+                          </div>
+                          {step.steps && step.steps.length > 0 ? (
+                            <div className="mt-4 space-y-2">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                {t("dashboard.algebra_steps_title")}
+                              </p>
+                              {step.steps.map((taskStep, index) => {
+                                const translatedStepRule =
+                                  taskStep.transformationType &&
+                                  translatableRuleKeys.includes(
+                                    taskStep.transformationType,
+                                  )
+                                    ? t(`rules.${taskStep.transformationType}`)
+                                    : "";
+
+                                return (
+                                  <div
+                                    key={taskStep.id}
+                                    className="rounded-md border border-slate-200 bg-white px-3 py-2"
+                                  >
+                                    <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+                                      <span>#{index + 1}</span>
+                                      <span
+                                        className={
+                                          taskStep.isCorrect
+                                            ? "text-emerald-700"
+                                            : "text-rose-700"
+                                        }
+                                      >
+                                        {taskStep.isCorrect
+                                          ? t("dashboard.status_correct")
+                                          : t("dashboard.status_incorrect")}
+                                      </span>
+                                    </div>
+                                    <div className="mt-1 font-mono text-sm text-slate-800 space-y-1">
+                                      <p>{taskStep.currentEquation}</p>
+                                      <p className="text-blue-700">
+                                        {taskStep.response}
+                                      </p>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                      <span>
+                                        {formatDuration(taskStep.timeTakenMs)}
+                                      </span>
+                                      {translatedStepRule ? (
+                                        <span className="font-semibold text-blue-700">
+                                          {translatedStepRule}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <div className="mt-2 font-mono text-sm text-gray-800 space-y-1">
+                            <p>{step.prompt || step.currentEquation}</p>
+                            <p className="text-blue-700">
+                              {step.response || step.proposedStep}
+                            </p>
+                            {!step.isCorrect && step.expectedAnswer ? (
+                              <p className="text-xs text-gray-500 font-sans">
+                                {t("dashboard.history_expected_answer")}:{" "}
+                                {step.expectedAnswer}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-600">
+                            <span>{formatDuration(step.timeTakenMs)}</span>
+                            {translatedRule ? (
+                              <span className="font-semibold text-blue-700">
+                                {translatedRule}
+                              </span>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
                     </article>
                   );
                 })}

@@ -2,6 +2,12 @@ import type {
   InputJsonObject,
   InputJsonValue,
 } from "@prisma/client/runtime/library";
+import {
+  aggregateAlgebraTaskEntries,
+  summarizeAlgebraTaskEntries,
+  type AlgebraHistoryTaskStep,
+  type RawAlgebraHistoryRow,
+} from "./algebra-history.js";
 import prisma from "./db.js";
 import { validateAnswer } from "./tasks.js";
 import { validateEquation, validateExpression } from "./validator.js";
@@ -34,6 +40,12 @@ export interface ModuleHistoryStep {
   isCorrect: boolean;
   errorType: string | null;
   timeTakenMs: number;
+  steps?: AlgebraHistoryTaskStep[];
+  stepCount?: number;
+  correctStepCount?: number;
+  taskAccuracy?: number;
+  totalTimeMs?: number;
+  isTaskComplete?: boolean;
 }
 
 export interface ModuleHistorySummary {
@@ -281,6 +293,38 @@ export async function getUserModuleHistory(
       module,
     },
   };
+
+  if (module === "algebra") {
+    const algebraAnswers: RawAlgebraHistoryRow[] = await prisma.answer.findMany(
+      {
+        where,
+        include: {
+          session: {
+            select: {
+              startedAt: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
+    );
+
+    const recentSteps = aggregateAlgebraTaskEntries(algebraAnswers, limit);
+    const summary = summarizeAlgebraTaskEntries(
+      aggregateAlgebraTaskEntries(algebraAnswers, Number.MAX_SAFE_INTEGER),
+    );
+
+    return {
+      module,
+      totalSubmissions: summary.totalSubmissions,
+      correctSubmissions: summary.correctSubmissions,
+      accuracy: summary.accuracy,
+      avgTimeMs: summary.avgTimeMs,
+      recentSteps,
+    };
+  }
 
   const [recentAnswers, totalSubmissions, correctSubmissions, aggregates]: [
     Array<{

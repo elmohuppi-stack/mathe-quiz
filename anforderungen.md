@@ -49,11 +49,11 @@ Das System muss modular aufgebaut sein. Jedes Modul besitzt:
 
 ### 2.3 Mindestumfang pro Modul im MVP
 
-| Modul               | Muss im MVP koennen                                                      |
-| ------------------- | ------------------------------------------------------------------------ |
-| Kopfrechnen         | Direktantwort, Speed-Drill, Basis-Leveling                               |
-| Brueche und Prozent | Direktantwort, Basis-Feedback, Basis-Leveling                            |
-| Algebra             | Direktantwort, Schritt-fuer-Schritt, Valid/Invalid, Fehlerklassifikation |
+| Modul               | Muss im MVP koennen                                       |
+| ------------------- | --------------------------------------------------------- |
+| Kopfrechnen         | Direktantwort, Speed-Drill, Basis-Leveling                |
+| Brueche und Prozent | Direktantwort, Basis-Feedback, Basis-Leveling             |
+| Algebra             | Schritt-fuer-Schritt, Valid/Invalid, Fehlerklassifikation |
 
 ---
 
@@ -226,12 +226,15 @@ Ein einzelner langsamer, aber korrekter Versuch darf im MVP nicht automatisch zu
 
 #### Kopfrechnen
 
-| Level | Zahlenbereich | Fokus                      |
-| ----- | ------------- | -------------------------- |
-| L1    | 1-10          | Addition, Subtraktion      |
-| L2    | 1-20          | gemischte Grundrechenarten |
-| L3    | 1-100         | Multiplikation, Division   |
-| L4    | -100 bis 100  | gemischte Aufgaben         |
+| Level | Zahlenbereich | Fokus                                                                 |
+| ----- | ------------- | --------------------------------------------------------------------- |
+| L1    | 1-10          | Addition, Subtraktion und einfache Multiplikation                     |
+| L2    | 1-10          | gemischte Grundrechenarten mit hoehrem Tempo                          |
+| L3    | 10-99         | Addition und Subtraktion, dazu leichte Multiplikationsmuster          |
+| L4    | 10-99         | Addition und Subtraktion, dazu ueberschaubare Produkte                |
+| L5    | 100+          | groessere Plus- und Minusaufgaben, exakte Multiplikation und Division |
+
+Hinweis fuer den MVP: Multiplikations- und Divisionsaufgaben duerfen gezielt kopfrechenfreundliche Zahlenmuster verwenden, damit die Schwierigkeit didaktisch sinnvoll bleibt und nicht nur ueber rohe Groesse eskaliert.
 
 #### Brueche und Prozent
 
@@ -554,6 +557,12 @@ Vor dem Livegang muessen mindestens vorhanden sein:
 - Seite oder Route `Datenschutz`
 - Links darauf im Footer
 
+Aktueller Stand April 2026:
+
+- Routen fuer `Impressum` und `Datenschutz` sind im Frontend integriert.
+- Footer-Links auf beide Seiten sind vorhanden.
+- Vor dem echten Livegang bleiben finale rechtliche Pruefung, produktive Erreichbarkeit und organisatorische DSGVO-Prozesse offen.
+
 ---
 
 ## 14. Erweiterbarkeit
@@ -590,6 +599,23 @@ Der MVP gilt als funktional, wenn folgende Punkte erfuellt sind:
 7. Die Anwendung ist auf Mobile und Desktop nutzbar.
 8. Nach einer Session wird eine Zusammenfassung angezeigt.
 9. Impressum und Datenschutz sind produktiv erreichbar.
+
+### 16.1 Umsetzungsstand April 2026
+
+Im aktuellen Repository-Stand sind folgende Punkte bereits praktisch erreicht:
+
+- Benutzerkonto, Login und die drei Pflicht-Module funktionieren.
+- Algebra validiert Schritte mit Fehlerklassifikation.
+- Antwortzeit, Korrektheit und Modulfortschritt werden gespeichert.
+- Die Anwendung ist auf Mobile und Desktop nutzbar.
+- Impressum, Datenschutz und Footer-Links sind im UI vorhanden.
+
+Noch offen oder nur teilweise umgesetzt sind:
+
+- die weitergehende automatische Adaptionslogik aus Abschnitt 5.3
+- eine eigene Session-Zusammenfassung nach Trainingsende
+- produktionsreife DSGVO-Prozesse fuer Export, Loeschung und Auskunft
+- produktive Erreichbarkeit der Pflichtseiten im finalen Deployment
 
 ---
 

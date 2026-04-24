@@ -10,11 +10,14 @@ Bereits umgesetzt sind:
 
 - Benutzerkonto mit Registrierung, Login und Token-Pruefung
 - Trainingsmodule fuer Kopfrechnen, Brueche und Algebra
+- auswaehlbare und gespeicherte Schwierigkeitsstufen pro Modul
 - Algebra mit Schritt-fuer-Schritt-Validierung ueber SymPy
 - Dashboard mit Modulfortschritt und gespeicherter Verlaufshistorie
+- Impressum und Datenschutzerklaerung mit Footer-Links
 - Speicherung einzelner Antworten inklusive Aufgaben-Snapshot und Antwortzeit
 - Deutsch- und Englisch-Uebersetzungen
 - Docker-Compose-Setup fuer Frontend, Backend, PostgreSQL und Validator
+- schneller Docker-Dev-Modus mit Live-Reload fuer Frontend, Backend und Validator
 
 Die Produktziele des aktuellen Stands sind:
 
@@ -113,24 +116,29 @@ Wichtige derzeit vorhandene Endpunkte sind:
 - `POST /algebra/validate-step`
 - `POST /sessions/end`
 - `GET /modules/progress/:module`
+- `PUT /modules/progress/:module/level`
 - `GET /answers/history/:module`
+- `GET /sessions/:sessionId/stats`
 
 ## Status
 
-Der aktuelle Status auf Commit `239b7ae` ist:
+Der aktuelle Stand auf `main` ist:
 
 - Kernplattform laeuft lokal stabil
 - Authentifizierung ist implementiert
 - Algebra ist Ende-zu-Ende integriert
 - Kopfrechnen und Brueche sind als direkte Antwortmodule vorhanden
 - Dashboard und Verlauf sind produktiv nutzbar
+- Rechtsseiten und Pflichtlinks sind im UI integriert
+- Schwierigkeitslevel koennen pro Modul direkt umgeschaltet werden
 - Validator- und Frontend-Regressionen wurden bereits abgesichert
 
 Noch offen oder nur teilweise umgesetzt sind:
 
-- weitergehende adaptive Logik pro Modul
-- Profilseite, Export und Datenschutz-Prozesse
-- Impressum und Datenschutzerklaerung im UI
+- weitergehende adaptive Logik pro Modul inklusive Wiederholungslogik
+- dedizierte Session-Zusammenfassung nach Trainingsende
+- Profilseite, Datenexport und definierter Loeschprozess
+- finale rechtliche Pruefung der Texte und Datenschutz-Prozesse fuer den Livegang
 - CI/CD-Hardening und finaler Hetzner-Rollout
 - breitere automatisierte Testabdeckung fuer UI- und Integrationspfade
 
@@ -151,7 +159,7 @@ Der finale produktive Betrieb soll weiterhin auf dem bestehenden Hetzner-Multi-A
 Die naechsten realistischen Ausbaustufen sind:
 
 1. adaptives Leveling und Wiederholungslogik pro Modul ausbauen
-2. Session-Abschluss und Profil/Export vervollstaendigen
-3. Impressum, Datenschutzerklaerung und Pflichtlinks integrieren
-4. weitere automatische Tests fuer Trainings- und Dashboard-Flows ergaenzen
+2. Session-Abschluss mit eigener Zusammenfassung vervollstaendigen
+3. Profil, Datenexport und Loeschprozess ergaenzen
+4. weitere automatische Tests fuer Trainings-, Dashboard- und Auth-Flows ergaenzen
 5. produktionsnahes Deployment und CI/CD finalisieren

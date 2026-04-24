@@ -9,9 +9,12 @@ Das Projekt befindet sich nicht mehr in der reinen Konzeptionsphase. Der aktuell
 - PostgreSQL via Prisma
 - internen Algebra-Validator auf Basis von FastAPI und SymPy
 - drei lauffaehige Module: Algebra, Kopfrechnen und Brueche
+- Rechtsseiten mit Footer-Links im Frontend
+- auswaehlbare und gespeicherte Modul-Level
+- Docker-Dev-Modus mit Live-Reload fuer Frontend, Backend und Validator
 - Docker-Compose-Betrieb fuer die komplette lokale Entwicklungsumgebung
 
-Der momentane Stand auf Commit `239b7ae` ist ein funktionierender MVP-Kern mit offenen Ausbau- und Hardening-Themen.
+Der momentane Stand auf `main` ist ein funktionierender MVP-Kern mit klar abgegrenzten Ausbau- und Hardening-Themen.
 
 ## 2. Zielbild
 
@@ -78,10 +81,11 @@ Der aktuelle Stand bezogen auf den Ziel-Scope ist:
 - Algebra vollstaendig: umgesetzt
 - Kopfrechnen als direktes Antwortmodul: umgesetzt
 - Brueche und Prozent als direktes Antwortmodul: umgesetzt
+- auswaehlbare Schwierigkeitsstufen pro Modul: umgesetzt
 - adaptives Basis-Leveling: nur in Basisform vorhanden, noch ausbaubar
 - Session-Feedback: umgesetzt
 - Dashboard mit Kernmetriken: umgesetzt
-- Impressum und Datenschutzerklaerung: offen
+- Impressum und Datenschutzerklaerung: im UI umgesetzt
 - Deployment auf Hetzner unter eigener Frontend- und API-Subdomain: vorbereitet, nicht final abgeschlossen
 
 Nicht Bestandteil des MVP bleiben:
@@ -102,6 +106,8 @@ Vor dem produktiven Livegang in Deutschland muessen mindestens umgesetzt sein:
 - datensparsame Standardkonfiguration ohne nicht notwendige Tracker
 - dokumentierte Liste eingesetzter Dienstleister
 - Loesch- und Exportprozess fuer Benutzerdaten
+
+Davon bereits umgesetzt sind Seiten und Footer-Links. Offen bleiben vor dem Livegang vor allem der definierte Export- und Loeschprozess, die finale Textpruefung und die produktive Deployment-Einbindung.
 
 ---
 
@@ -237,7 +243,9 @@ Generierte Aufgaben werden aktuell als JSON-Snapshot an der Antwort gespeichert.
 - `POST /algebra/validate-step`
 - `POST /sessions/end`
 - `GET /modules/progress/:module`
+- `PUT /modules/progress/:module/level`
 - `GET /answers/history/:module`
+- `GET /sessions/:sessionId/stats`
 
 ### 10.2 Noch nicht umgesetzt, aber weiterhin im Plan
 
@@ -325,24 +333,26 @@ Ein Benutzer kann eine Algebra-Session vollstaendig absolvieren und erhaelt korr
 
 ## Phase 3: Weitere Module und Basis-Adaption
 
-Status: in grossem Teil umgesetzt
+Status: umgesetzt, mit offenen Ausbaupunkten
 
 ### Inhalte
 
 - Kopfrechnen-Modul ergaenzen
 - Brueche-und-Prozent-Modul ergaenzen
-- adaptive Logik auf Basis von Antwortzeit und Korrektheit einfuehren
+- waehlbare Schwierigkeitsstufen pro Modul einfuehren
+- adaptive Logik auf Basis von Antwortzeit und Korrektheit vertiefen
 - Wiederholungslogik fuer Fehler und langsame Muster ergaenzen
 
 ### Ergebnis
 
-Alle drei MVP-Module laufen auf derselben Plattform. Die adaptive Logik ist bislang einfacher als urspruenglich geplant und bleibt ein offener Ausbaupunkt.
+Alle drei MVP-Module laufen auf derselben Plattform. Schwierigkeitsstufen koennen bereits pro Modul umgeschaltet und gespeichert werden. Die automatische Adaptions- und Wiederholungslogik bleibt aber ein offener Ausbaupunkt.
 
 ### Exit-Kriterien
 
 - drei Module sind im UI auswaehlbar
 - pro Modul wird Fortschritt gespeichert
-- Levelwechsel und Wiederholungslogik koennen als naechster Schritt vertieft werden
+- Levelwechsel ist im UI moeglich
+- automatische Wiederholungslogik kann als naechster Schritt vertieft werden
 
 ---
 
@@ -360,12 +370,13 @@ Status: teilweise umgesetzt
 
 ### Ergebnis
 
-Der Benutzer sieht bereits seinen Fortschritt und die Verlaufshistorie pro Modul. Profilbearbeitung und Export sind noch offen.
+Der Benutzer sieht bereits seinen Fortschritt und die Verlaufshistorie pro Modul. Eine dedizierte Session-Zusammenfassung, Profilbearbeitung und Export sind noch offen.
 
 ### Exit-Kriterien
 
 - Uebersicht mit Genauigkeit und Antwortzeit vorhanden
 - Modulverlauf und letzte Aufgaben sind sichtbar
+- Session-Statistik-Endpunkt vorhanden, aber noch nicht als eigene Abschlussansicht im UI genutzt
 - Profil editierbar: offen
 - Export funktioniert: offen
 - Benutzer koennen ihre Kernprofildaten exportieren: offen
@@ -374,7 +385,7 @@ Der Benutzer sieht bereits seinen Fortschritt und die Verlaufshistorie pro Modul
 
 ## Phase 5: Responsive UX und Hardening
 
-Status: teilweise umgesetzt
+Status: weitgehend umgesetzt, mit Restpunkten
 
 ### Inhalte
 
@@ -389,7 +400,7 @@ Status: teilweise umgesetzt
 
 ### Ergebnis
 
-Die Anwendung ist deutlich stabiler und besser bedienbar als in der Startphase. Vor dem ersten echten Livegang fehlen aber noch rechtliche Seiten, weitere Tests und letzter UX-Feinschliff.
+Die Anwendung ist deutlich stabiler und besser bedienbar als in der Startphase. Rechtsseiten, Footer-Links, Eingabefokus, mobile Layouts und ruhigere Trainings-Interaktionen sind bereits umgesetzt. Vor dem ersten echten Livegang fehlen vor allem weitere Tests, letzter UX-Feinschliff und finale rechtliche Abnahme.
 
 ### Exit-Kriterien
 
@@ -494,10 +505,10 @@ python main.py
 Die aktuell praktischste lokale Variante ist:
 
 ```bash
-docker compose up -d --build
+make dev-up
 ```
 
-Fuer reine Frontend- oder API-Arbeit kann weiterhin der direkte Dev-Workflow genutzt werden.
+Der Dev-Modus startet Frontend, Backend und Validator im Watch-Modus mit Volume-Mounts. Fuer Aenderungen an Abhaengigkeiten oder Dockerfiles bleibt `docker compose up -d --build` beziehungsweise `make build` sinnvoll.
 
 ---
 

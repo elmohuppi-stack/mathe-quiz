@@ -17,7 +17,16 @@ import {
   getSessionStats,
   getUserModuleHistory,
 } from "./answers.js";
-import { validateAlgebraStep, classifyError } from "./validator-client.js";
+import {
+  validateAlgebraStep,
+  classifyError,
+  normalizeAlgebraStep,
+  resolveAlgebraStepValidation,
+} from "./validator-client.js";
+import {
+  deriveCurrentRule,
+  isLocallyAcceptedAlgebraStep,
+} from "./algebra-rules.js";
 import prisma from "./db.js";
 
 const port = parseInt(process.env.PORT || "3000");
@@ -280,6 +289,7 @@ app.post(
           currentEquation: z.string(), // The equation at this step
           proposedStep: z.string(), // User's proposed next step
           expectedFirstStep: z.string(), // The expected correct first step
+          correctAnswer: z.string().optional(), // The final solution for task completion
           timeTakenMs: z.number().min(0),
         })
         .parse(request.body);
@@ -287,11 +297,48 @@ app.post(
       const userId = getRequestUser(request).id;
 
       // Validate the step using SymPy validator
-      const stepValidation = await validateAlgebraStep({
+      const validatorResponse = await validateAlgebraStep({
         current: body.currentEquation,
         proposed: body.proposedStep,
         variables: ["x"],
       });
+
+      const exactMatchValidation = resolveAlgebraStepValidation(
+        body.proposedStep,
+        body.expectedFirstStep,
+        validatorResponse,
+      );
+
+      const locallyAcceptedStep =
+        !exactMatchValidation.stepValidation.is_valid &&
+        isLocallyAcceptedAlgebraStep(
+          body.proposedStep,
+          body.currentEquation,
+          body.expectedFirstStep,
+        );
+
+      const fallbackRule = deriveCurrentRule(body.currentEquation);
+      const stepValidation = locallyAcceptedStep
+        ? {
+            ...exactMatchValidation.stepValidation,
+            is_valid: true,
+            are_equivalent: true,
+            transformation_type:
+              exactMatchValidation.stepValidation.transformation_type ||
+              fallbackRule,
+            error_code: undefined,
+            message: "Step matches an allowed next step",
+          }
+        : exactMatchValidation.stepValidation;
+      const isExactMatch =
+        exactMatchValidation.isExactMatch || locallyAcceptedStep;
+      const isTaskComplete =
+        stepValidation.is_valid &&
+        stepValidation.are_equivalent &&
+        typeof body.correctAnswer === "string" &&
+        body.correctAnswer.length > 0 &&
+        normalizeAlgebraStep(body.proposedStep) ===
+          normalizeAlgebraStep(body.correctAnswer);
 
       // Classify error if not correct
       const errorClass = !stepValidation.is_valid
@@ -310,6 +357,8 @@ app.post(
             expectedFirstStep: body.expectedFirstStep,
             transformationType: stepValidation.transformation_type,
             isEquivalent: stepValidation.are_equivalent,
+            correctAnswer: body.correctAnswer,
+            isTaskComplete,
           },
           userAnswer: body.proposedStep,
           isCorrect: stepValidation.is_valid,
@@ -320,16 +369,12 @@ app.post(
 
       await syncModuleProgress(userId, "algebra");
 
-      // Check if the step matches the expected first step
-      const isExactMatch =
-        body.proposedStep.trim().replace(/\s/g, "") ===
-        body.expectedFirstStep.trim().replace(/\s/g, "");
-
       reply.send({
         isValid: stepValidation.is_valid,
         isEquivalent: stepValidation.are_equivalent,
         isExactMatch,
         transformationType: stepValidation.transformation_type,
+        isTaskComplete,
         message: stepValidation.message,
         errorType: errorClass?.type,
         errorDescription: errorClass?.description,

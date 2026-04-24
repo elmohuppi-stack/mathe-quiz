@@ -2,112 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "../i18n/useTranslation";
 import api from "../lib/api";
 import { resolveAlgebraStepFlowOutcome } from "./algebraStepFlow";
-
-function normalizeAlgebraSide(side: string): string {
-  return side
-    .replace(/\s+/g, "")
-    .replace(/\+\+/g, "+")
-    .replace(/\+-/g, "-")
-    .replace(/-\+/g, "-")
-    .replace(/--/g, "+");
-}
-
-function countVariableOccurrences(side: string): number {
-  return (side.match(/x/g) || []).length;
-}
-
-function parseLinearSide(side: string): {
-  coefficient: number;
-  constant: number;
-} | null {
-  const normalized = normalizeAlgebraSide(side);
-  const match = normalized.match(/^([+-]?\d*)x([+-]\d+)?$/);
-
-  if (!match) {
-    return null;
-  }
-
-  const coefficientToken = match[1];
-  const coefficient =
-    coefficientToken === "" || coefficientToken === "+"
-      ? 1
-      : coefficientToken === "-"
-        ? -1
-        : Number(coefficientToken);
-
-  return {
-    coefficient,
-    constant: match[2] ? Number(match[2]) : 0,
-  };
-}
-
-function isFractionVariableSide(side: string): boolean {
-  const normalized = normalizeAlgebraSide(side);
-  return /^[+-]?(?:\d+)?x\/\d+$/.test(normalized);
-}
-
-function deriveCurrentRule(
-  equation: string,
-  fallbackRule?: string,
-): string | undefined {
-  const parts = equation.split("=");
-  if (parts.length !== 2) {
-    return fallbackRule;
-  }
-
-  const left = parts[0].trim();
-  const right = parts[1].trim();
-
-  if (equation.includes("(")) {
-    return "distributive_law";
-  }
-
-  if (
-    countVariableOccurrences(left) > 1 ||
-    countVariableOccurrences(right) > 1
-  ) {
-    return "combine_like_terms";
-  }
-
-  const leftLinear = parseLinearSide(left);
-  const rightLinear = parseLinearSide(right);
-  const leftHasVariable = left.includes("x");
-  const rightHasVariable = right.includes("x");
-
-  if (leftLinear && !rightHasVariable) {
-    if (leftLinear.constant !== 0) {
-      return leftLinear.constant > 0 ? "subtract_both_sides" : "add_both_sides";
-    }
-    if (Math.abs(leftLinear.coefficient) !== 1) {
-      return "divide_both_sides";
-    }
-  }
-
-  if (leftHasVariable && !rightHasVariable && isFractionVariableSide(left)) {
-    return "multiply_both_sides";
-  }
-
-  if (rightLinear && !leftHasVariable) {
-    if (rightLinear.constant !== 0) {
-      return rightLinear.constant > 0
-        ? "subtract_both_sides"
-        : "add_both_sides";
-    }
-    if (Math.abs(rightLinear.coefficient) !== 1) {
-      return "divide_both_sides";
-    }
-  }
-
-  if (rightHasVariable && !leftHasVariable && isFractionVariableSide(right)) {
-    return "multiply_both_sides";
-  }
-
-  if (leftHasVariable && rightHasVariable) {
-    return "subtract_both_sides";
-  }
-
-  return fallbackRule;
-}
+import {
+  deriveCurrentRule,
+  isLocallyAcceptedAlgebraStep,
+} from "./algebraRules";
 
 interface SessionData {
   sessionId: string;
@@ -307,19 +205,39 @@ export default function AlgebraTraining({
         currentEquation,
         proposedStep: userStep,
         expectedFirstStep: task.expectedFirstStep,
+        correctAnswer: task.correctAnswer,
         timeTakenMs,
       });
 
-      setStepValidation(response.data);
+      const isExpectedFirstStep = isLocallyAcceptedAlgebraStep(
+        userStep,
+        currentEquation,
+        task.expectedFirstStep,
+        task.metadata?.rule,
+      );
+      const effectiveValidation: StepValidation =
+        !response.data.isValid && isExpectedFirstStep
+          ? {
+              ...response.data,
+              isValid: true,
+              isEquivalent: true,
+              isExactMatch: true,
+              errorType: undefined,
+              errorDescription: undefined,
+              errorSeverity: undefined,
+            }
+          : response.data;
+
+      setStepValidation(effectiveValidation);
 
       const outcome = resolveAlgebraStepFlowOutcome(
-        response.data,
+        effectiveValidation,
         userStep,
         task.correctAnswer,
         t,
       );
 
-      if (response.data.isValid && response.data.isEquivalent) {
+      if (effectiveValidation.isValid && effectiveValidation.isEquivalent) {
         const newSteps = [...steps, userStep];
         setSteps(newSteps);
 
