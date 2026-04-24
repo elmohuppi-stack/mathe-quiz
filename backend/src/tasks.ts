@@ -46,6 +46,10 @@ function pickRandom<T>(values: readonly T[]): T {
   return values[Math.floor(Math.random() * values.length)];
 }
 
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 function greatestCommonDivisor(a: bigint, b: bigint): bigint {
   let left = a < 0n ? -a : a;
   let right = b < 0n ? -b : b;
@@ -249,8 +253,8 @@ function createPercentageRatioTask(level: number, taskId: string): Task {
 /**
  * Generate a mental math task
  * Level 1-2: Single digit operations
- * Level 3-4: Double digit operations
- * Level 5: Complex multi-step
+ * Level 3-4: Double digit addition/subtraction with guided multiplication
+ * Level 5: Larger sums plus exact friendly multiplication and division
  */
 function generateMentalMathTask(level: number): Task {
   const taskId = `mental-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -262,20 +266,36 @@ function generateMentalMathTask(level: number): Task {
     b = Math.floor(Math.random() * 10) + 1;
     operation = ["+", "-", "*"][Math.floor(Math.random() * 3)] as any;
   } else if (level <= 4) {
-    a = Math.floor(Math.random() * 90) + 10;
-    b = Math.floor(Math.random() * 90) + 10;
-    operation = ["+", "-", "*"][Math.floor(Math.random() * 3)] as any;
+    operation = pickRandom(["+", "-", "*"] as const);
+
+    if (operation === "*") {
+      a = pickRandom([12, 15, 18, 20, 24, 25, 30, 36, 40, 45] as const);
+      b = randomInt(2, 9);
+    } else {
+      a = randomInt(10, 99);
+      b = randomInt(10, 99);
+    }
   } else {
-    a = Math.floor(Math.random() * 999) + 100;
-    b = Math.floor(Math.random() * 99) + 10;
-    operation = ["+", "-", "*", "/"][Math.floor(Math.random() * 4)] as any;
+    operation = pickRandom(["+", "-", "*", "/"] as const);
+
+    if (operation === "*") {
+      a = pickRandom([15, 18, 20, 24, 25, 30, 36, 40, 45, 50] as const);
+      b = randomInt(3, 12);
+    } else if (operation === "/") {
+      b = randomInt(2, 12);
+      const quotient = randomInt(4, 24);
+      a = b * quotient;
+    } else {
+      a = randomInt(100, 999);
+      b = randomInt(10, 99);
+    }
   }
 
   let correctAnswer: string;
   if (operation === "+") correctAnswer = (a + b).toString();
   else if (operation === "-") correctAnswer = (a - b).toString();
   else if (operation === "*") correctAnswer = (a * b).toString();
-  else correctAnswer = (a / b).toFixed(2);
+  else correctAnswer = (a / b).toString();
 
   return {
     taskId,

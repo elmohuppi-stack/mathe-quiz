@@ -35,7 +35,7 @@ function evaluateMentalMath(a: number, operation: string, b: number) {
     case "*":
       return (a * b).toString();
     case "/":
-      return (a / b).toFixed(2);
+      return (a / b).toString();
     default:
       throw new Error(`Unsupported operation: ${operation}`);
   }
@@ -92,13 +92,29 @@ test("mental math tasks generate valid questions and answers across all levels",
       assert.ok(parsed.b >= 1 && parsed.b <= 10);
       assert.ok(["+", "-", "*"].includes(parsed.operation));
     } else if (level <= 4) {
-      assert.ok(parsed.a >= 10 && parsed.a <= 99);
-      assert.ok(parsed.b >= 10 && parsed.b <= 99);
       assert.ok(["+", "-", "*"].includes(parsed.operation));
+
+      if (parsed.operation === "*") {
+        assert.ok([12, 15, 18, 20, 24, 25, 30, 36, 40, 45].includes(parsed.a));
+        assert.ok(parsed.b >= 2 && parsed.b <= 9);
+      } else {
+        assert.ok(parsed.a >= 10 && parsed.a <= 99);
+        assert.ok(parsed.b >= 10 && parsed.b <= 99);
+      }
     } else {
-      assert.ok(parsed.a >= 100 && parsed.a <= 1098);
-      assert.ok(parsed.b >= 10 && parsed.b <= 108);
       assert.ok(["+", "-", "*", "/"].includes(parsed.operation));
+
+      if (parsed.operation === "*") {
+        assert.ok([15, 18, 20, 24, 25, 30, 36, 40, 45, 50].includes(parsed.a));
+        assert.ok(parsed.b >= 3 && parsed.b <= 12);
+      } else if (parsed.operation === "/") {
+        assert.ok(parsed.b >= 2 && parsed.b <= 12);
+        assert.equal(parsed.a % parsed.b, 0);
+        assert.ok(parsed.a >= 8 && parsed.a <= 288);
+      } else {
+        assert.ok(parsed.a >= 100 && parsed.a <= 999);
+        assert.ok(parsed.b >= 10 && parsed.b <= 99);
+      }
     }
   }
 });

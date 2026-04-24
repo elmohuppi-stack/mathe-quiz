@@ -59,6 +59,12 @@ services:
     container_name: mathe-quiz-frontend
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3032}
+      VITE_LEGAL_NAME: ${VITE_LEGAL_NAME:-}
+      VITE_LEGAL_EMAIL: ${VITE_LEGAL_EMAIL:-}
+      VITE_LEGAL_ADDRESS_LINE_1: ${VITE_LEGAL_ADDRESS_LINE_1:-}
+      VITE_LEGAL_ADDRESS_LINE_2: ${VITE_LEGAL_ADDRESS_LINE_2:-}
+      VITE_LEGAL_COUNTRY: ${VITE_LEGAL_COUNTRY:-}
+      VITE_LEGAL_CONTENT_RESPONSIBLE: ${VITE_LEGAL_CONTENT_RESPONSIBLE:-}
     ports:
       - "${WEB_PORT:-3031}:5173"
     depends_on:
