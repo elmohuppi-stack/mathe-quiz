@@ -8,12 +8,20 @@ import AlgebraTraining from "../components/AlgebraTraining";
 import api from "../lib/api";
 
 type Module = "mental-math" | "fractions" | "algebra";
+const LEVEL_OPTIONS = [1, 2, 3, 4, 5] as const;
 
 interface SessionData {
   sessionId: string;
   userId: string;
   module: Module;
   startedAt: string;
+}
+
+interface ModuleProgressData {
+  module: Module;
+  level: number;
+  accuracy: number;
+  totalAnswers: number;
 }
 
 export default function TrainingPage() {
@@ -23,12 +31,16 @@ export default function TrainingPage() {
   const { module } = useParams<{ module: Module }>();
 
   const [session, setSession] = useState<SessionData | null>(null);
-  const [level] = useState(1);
+  const [level, setLevel] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLevelUpdating, setIsLevelUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [levelError, setLevelError] = useState<string | null>(null);
 
   useEffect(() => {
-    const startTraining = async () => {
+    let isCancelled = false;
+
+    const initializeTraining = async () => {
       if (
         !token ||
         !module ||
@@ -40,24 +52,78 @@ export default function TrainingPage() {
 
       try {
         setIsLoading(true);
-        // Start a new session
-        const response = await api.post("/sessions/start", {
+        setError(null);
+        setLevelError(null);
+        setSession(null);
+
+        const progressResponse = await api.get<ModuleProgressData>(
+          `/modules/progress/${module}`,
+        );
+        const initialLevel = progressResponse.data.level ?? 1;
+
+        const response = await api.post<SessionData>("/sessions/start", {
           module,
-          level,
+          level: initialLevel,
         });
 
+        if (isCancelled) {
+          return;
+        }
+
+        setLevel(initialLevel);
         setSession(response.data);
       } catch (err: any) {
+        if (isCancelled) {
+          return;
+        }
+
         setError(
           err.response?.data?.error || t("errors.general.internal_error"),
         );
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     };
 
-    startTraining();
-  }, [token, module, navigate, level]);
+    void initializeTraining();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [token, module, navigate, t]);
+
+  const handleLevelChange = async (nextLevel: number) => {
+    if (!module || level === null || nextLevel === level || isLevelUpdating) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setIsLevelUpdating(true);
+      setLevelError(null);
+
+      await api.put(`/modules/progress/${module}/level`, {
+        level: nextLevel,
+      });
+
+      const response = await api.post<SessionData>("/sessions/start", {
+        module,
+        level: nextLevel,
+      });
+
+      setLevel(nextLevel);
+      setSession(response.data);
+    } catch (err: any) {
+      setLevelError(
+        err.response?.data?.error || t("errors.general.internal_error"),
+      );
+    } finally {
+      setIsLoading(false);
+      setIsLevelUpdating(false);
+    }
+  };
 
   const handleSessionEnd = () => {
     navigate("/dashboard");
@@ -93,7 +159,7 @@ export default function TrainingPage() {
     );
   }
 
-  if (!session) {
+  if (!session || level === null) {
     return null;
   }
 
@@ -103,6 +169,7 @@ export default function TrainingPage() {
       case "mental-math":
         return (
           <MentalMathTraining
+            key={`${session.sessionId}-${level}`}
             session={session}
             level={level}
             onSessionEnd={handleSessionEnd}
@@ -111,6 +178,7 @@ export default function TrainingPage() {
       case "fractions":
         return (
           <FractionsTraining
+            key={`${session.sessionId}-${level}`}
             session={session}
             level={level}
             onSessionEnd={handleSessionEnd}
@@ -119,6 +187,7 @@ export default function TrainingPage() {
       case "algebra":
         return (
           <AlgebraTraining
+            key={`${session.sessionId}-${level}`}
             session={session}
             level={level}
             onSessionEnd={handleSessionEnd}
@@ -133,20 +202,55 @@ export default function TrainingPage() {
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-4xl mx-auto py-8">
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-start lg:justify-between">
             <h1 className="text-3xl font-bold text-gray-800">
               {t(`modules.${session.module}`)}
             </h1>
-            <div className="flex items-center space-x-4">
-              <span className="text-lg font-semibold text-blue-600">
-                {t("training.level")}: {level}
-              </span>
+            <div className="flex flex-col items-start gap-3 lg:items-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    {t("training.level")}
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {LEVEL_OPTIONS.map((option) => {
+                      const isActive = option === level;
+
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => void handleLevelChange(option)}
+                          disabled={isLevelUpdating}
+                          className={[
+                            "rounded-full border px-3 py-1.5 text-sm font-semibold transition",
+                            isActive
+                              ? "border-blue-600 bg-blue-600 text-white"
+                              : "border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:text-blue-700",
+                            isLevelUpdating ? "cursor-wait opacity-70" : "",
+                          ].join(" ")}
+                        >
+                          L{option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {isLevelUpdating ? (
+                  <span className="text-sm text-gray-500">
+                    {t("messages.training.loading")}
+                  </span>
+                ) : null}
+              </div>
               <button
                 onClick={() => navigate("/dashboard")}
                 className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
               >
                 {t("common.exit")}
               </button>
+              {levelError ? (
+                <p className="text-sm text-red-600">{levelError}</p>
+              ) : null}
             </div>
           </div>
           {renderTraining()}

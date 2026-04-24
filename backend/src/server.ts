@@ -9,6 +9,7 @@ import {
   startSession,
   endSession,
   getModuleProgress,
+  setModuleLevel,
   syncModuleProgress,
 } from "./sessions.js";
 import {
@@ -455,6 +456,45 @@ app.get(
       reply.status(500).send({
         error: t("errors.general.internal_error", (error as Error).message),
       });
+    }
+  },
+);
+
+app.put(
+  "/modules/progress/:module/level",
+  { onRequest: [authenticate] },
+  async (request, reply) => {
+    try {
+      const params = z
+        .object({
+          module: z.enum(["mental-math", "fractions", "algebra"]),
+        })
+        .parse(request.params);
+
+      const body = z
+        .object({
+          level: z.number().int().min(1).max(5),
+        })
+        .parse(request.body);
+
+      const progress = await setModuleLevel(
+        getRequestUser(request).id,
+        params.module as Module,
+        body.level,
+      );
+
+      reply.send(progress);
+    } catch (error) {
+      const t = getTranslatorFromRequest(request);
+      if (error instanceof z.ZodError) {
+        reply.status(400).send({
+          error: t("errors.validation.required_field", "Validation failed"),
+        });
+      } else {
+        reply.status(500).send({
+          error: t("errors.general.internal_error", (error as Error).message),
+        });
+      }
     }
   },
 );

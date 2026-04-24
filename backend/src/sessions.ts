@@ -14,6 +14,29 @@ export interface SessionData {
   accuracy?: number;
 }
 
+export async function setModuleLevel(
+  userId: string,
+  module: Module,
+  level: number,
+) {
+  return prisma.moduleProgress.upsert({
+    where: {
+      userId_module: {
+        userId,
+        module,
+      },
+    },
+    create: {
+      userId,
+      module,
+      level,
+    },
+    update: {
+      level,
+    },
+  });
+}
+
 /**
  * Start a new training session
  */
@@ -22,6 +45,8 @@ export async function startSession(
   module: Module,
   level: number,
 ) {
+  await setModuleLevel(userId, module, level);
+
   const session = await prisma.session.create({
     data: {
       userId,
@@ -85,7 +110,7 @@ export async function endSession(
     create: {
       userId,
       module: session.module,
-      level: 1,
+      level: existingProgress?.level ?? 1,
       accuracy: nextAccuracy,
       totalAnswers: totalTasks,
     },
