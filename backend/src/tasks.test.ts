@@ -42,19 +42,31 @@ function evaluateMentalMath(a: number, operation: string, b: number) {
 }
 
 function evaluateFractionTask(task: ReturnType<typeof generateTask>) {
-  const { numerator1, denominator1, numerator2, denominator2, operation } =
-    task.taskData;
-  switch (operation) {
-    case "+":
-      return `${numerator1 * denominator2 + numerator2 * denominator1}/${denominator1 * denominator2}`;
-    case "-":
-      return `${numerator1 * denominator2 - numerator2 * denominator1}/${denominator1 * denominator2}`;
-    case "*":
-      return `${numerator1 * numerator2}/${denominator1 * denominator2}`;
-    case "/":
-      return `${numerator1 * denominator2}/${denominator1 * numerator2}`;
+  switch (task.taskData.kind) {
+    case "fraction-operation": {
+      const { numerator1, denominator1, numerator2, denominator2, operation } =
+        task.taskData;
+      switch (operation) {
+        case "+":
+          return `${numerator1! * denominator2! + numerator2! * denominator1!}/${denominator1! * denominator2!}`;
+        case "-":
+          return `${numerator1! * denominator2! - numerator2! * denominator1!}/${denominator1! * denominator2!}`;
+        case "*":
+          return `${numerator1! * numerator2!}/${denominator1! * denominator2!}`;
+        case "/":
+          return `${numerator1! * denominator2!}/${denominator1! * numerator2!}`;
+        default:
+          throw new Error(`Unsupported fraction operation: ${operation}`);
+      }
+    }
+    case "fraction-to-percent":
+      return `${task.taskData.percent}%`;
+    case "percent-of-quantity":
+      return `${task.taskData.partValue}`;
+    case "percentage-ratio":
+      return `${task.taskData.percent}%`;
     default:
-      throw new Error(`Unsupported fraction operation: ${operation}`);
+      throw new Error(`Unsupported fractions task kind: ${task.taskData.kind}`);
   }
 }
 
@@ -98,28 +110,62 @@ test("fraction tasks generate consistent answers across all levels", () => {
     assert.equal(task.module, "fractions");
     assert.equal(task.level, level);
     assert.match(task.taskId, /^fractions-/);
-    assert.match(
-      task.taskData.question,
-      /^\d+\/\d+\s[+\-*/]\s\d+\/\d+\s=\s\?$/,
-    );
 
-    parseFraction(`${task.taskData.numerator1}/${task.taskData.denominator1}`);
-    parseFraction(`${task.taskData.numerator2}/${task.taskData.denominator2}`);
-
-    if (task.taskData.operation === "/") {
-      assert.notStrictEqual(task.taskData.numerator2, 0);
+    switch (task.taskData.kind) {
+      case "fraction-operation":
+        assert.match(
+          task.taskData.question,
+          /^\d+\/\d+\s[+\-*/]\s\d+\/\d+\s=\s\?$/,
+        );
+        parseFraction(
+          `${task.taskData.numerator1}/${task.taskData.denominator1}`,
+        );
+        parseFraction(
+          `${task.taskData.numerator2}/${task.taskData.denominator2}`,
+        );
+        if (task.taskData.operation === "/") {
+          assert.notStrictEqual(task.taskData.numerator2, 0);
+        }
+        if (level <= 2) {
+          assert.ok(["+", "-"].includes(task.taskData.operation!));
+          assert.equal(task.taskData.denominator1, task.taskData.denominator2);
+        } else if (level <= 4) {
+          assert.ok(["+", "-", "*"].includes(task.taskData.operation!));
+        } else {
+          assert.ok(["+", "-", "*", "/"].includes(task.taskData.operation!));
+        }
+        break;
+      case "fraction-to-percent":
+        assert.match(task.taskData.question, /^\d+\/\d+\s=\s\?\s%$/);
+        parseFraction(
+          `${task.taskData.numerator1}/${task.taskData.denominator1}`,
+        );
+        assert.ok(typeof task.taskData.percent === "number");
+        assert.match(task.correctAnswer, /^\d+%$/);
+        break;
+      case "percent-of-quantity":
+        assert.match(task.taskData.question, /^\d+% von \d+ = \?$/);
+        assert.ok(typeof task.taskData.percent === "number");
+        assert.ok(typeof task.taskData.baseValue === "number");
+        assert.ok(typeof task.taskData.partValue === "number");
+        assert.match(task.correctAnswer, /^\d+$/);
+        assert.ok(level >= 3);
+        break;
+      case "percentage-ratio":
+        assert.match(task.taskData.question, /^\d+ ist wie viel % von \d+\?$/);
+        assert.ok(typeof task.taskData.percent === "number");
+        assert.ok(typeof task.taskData.baseValue === "number");
+        assert.ok(typeof task.taskData.partValue === "number");
+        assert.match(task.correctAnswer, /^\d+%$/);
+        assert.ok(level === 5);
+        break;
+      default:
+        throw new Error(
+          `Unsupported fractions task kind: ${task.taskData.kind}`,
+        );
     }
 
     assert.equal(task.correctAnswer, evaluateFractionTask(task));
-
-    if (level <= 2) {
-      assert.ok(["+", "-"].includes(task.taskData.operation));
-      assert.equal(task.taskData.denominator1, task.taskData.denominator2);
-    } else if (level <= 4) {
-      assert.ok(["+", "-", "*"].includes(task.taskData.operation));
-    } else {
-      assert.ok(["+", "-", "*", "/"].includes(task.taskData.operation));
-    }
   }
 });
 
@@ -162,4 +208,13 @@ test("validateAnswer ignores whitespace and casing", () => {
   assert.equal(validateAnswer("  X = 5 ", "x=5"), true);
   assert.equal(validateAnswer("3/4", " 3 / 4 "), true);
   assert.equal(validateAnswer("5", "6"), false);
+});
+
+test("validateAnswer accepts equivalent fractions and whole-number forms", () => {
+  assert.equal(validateAnswer("1/2", "2/4"), true);
+  assert.equal(validateAnswer("6/3", "2"), true);
+  assert.equal(validateAnswer("75", "75%"), true);
+  assert.equal(validateAnswer("75%", "75%"), true);
+  assert.equal(validateAnswer("-3/6", "1/2"), false);
+  assert.equal(validateAnswer("3/0", "1/2"), false);
 });
