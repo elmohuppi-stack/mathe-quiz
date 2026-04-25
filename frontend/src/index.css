@@ -8,10 +8,259 @@
   box-sizing: border-box;
 }
 
+:root {
+  color-scheme: light;
+  --app-bg: #f3f4f6;
+  --app-surface: #ffffff;
+  --app-surface-strong: #f8fafc;
+  --app-surface-soft: rgba(255, 255, 255, 0.82);
+  --app-border: #e5e7eb;
+  --app-text: #111827;
+  --app-text-muted: #374151;
+  --app-text-soft: #6b7280;
+}
+
+html.dark {
+  color-scheme: dark;
+  --app-bg: #0f172a;
+  --app-surface: #111827;
+  --app-surface-strong: #1e293b;
+  --app-surface-soft: rgba(17, 24, 39, 0.82);
+  --app-border: #334155;
+  --app-text: #e5e7eb;
+  --app-text-muted: #cbd5e1;
+  --app-text-soft: #94a3b8;
+}
+
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.theme-toggle-button {
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f2937;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+html.dark .theme-toggle-button {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.34);
+}
+
+html.dark .training-hero {
+  border-color: rgba(71, 85, 105, 0.75);
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(96, 165, 250, 0.18),
+      transparent 36%
+    ),
+    linear-gradient(135deg, #0f172a 0%, #111827 48%, #172554 100%);
+}
+
+html.dark .bg-gray-100 {
+  background-color: var(--app-bg);
+}
+
+html.dark .bg-white {
+  background-color: var(--app-surface);
+}
+
+html.dark .bg-white\/95 {
+  background-color: rgba(17, 24, 39, 0.95);
+}
+
+html.dark .bg-white\/90,
+html.dark .bg-white\/80,
+html.dark .bg-white\/75 {
+  background-color: var(--app-surface-soft);
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-100 {
+  background-color: var(--app-surface-strong);
+}
+
+html.dark .bg-gray-300,
+html.dark .bg-gray-400,
+html.dark .bg-slate-300,
+html.dark .bg-slate-400 {
+  background-color: #334155;
+}
+
+html.dark .bg-red-50 {
+  background-color: rgba(127, 29, 29, 0.24);
+}
+
+html.dark .bg-blue-50,
+html.dark .bg-blue-100,
+html.dark .bg-sky-50,
+html.dark .bg-sky-100,
+html.dark .bg-indigo-50,
+html.dark .bg-indigo-100,
+html.dark .bg-cyan-50,
+html.dark .bg-cyan-100 {
+  background-color: rgba(30, 64, 175, 0.18);
+}
+
+html.dark .bg-amber-50,
+html.dark .bg-amber-100,
+html.dark .bg-lime-100 {
+  background-color: rgba(120, 53, 15, 0.2);
+}
+
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: var(--app-text);
+}
+
+html.dark .text-gray-700,
+html.dark .text-gray-600,
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: var(--app-text-muted);
+}
+
+html.dark .text-gray-500,
+html.dark .text-slate-500 {
+  color: var(--app-text-soft);
+}
+
+html.dark .text-blue-900,
+html.dark .text-blue-800,
+html.dark .text-sky-900,
+html.dark .text-sky-800,
+html.dark .text-indigo-900,
+html.dark .text-indigo-800,
+html.dark .text-cyan-900,
+html.dark .text-cyan-800 {
+  color: #bfdbfe;
+}
+
+html.dark .text-blue-700,
+html.dark .text-blue-600,
+html.dark .text-sky-700,
+html.dark .text-indigo-700,
+html.dark .text-cyan-700 {
+  color: #60a5fa;
+}
+
+html.dark .text-amber-900,
+html.dark .text-amber-800 {
+  color: #fcd34d;
+}
+
+html.dark .text-amber-700 {
+  color: #fbbf24;
+}
+
+html.dark .text-amber-100,
+html.dark .text-lime-100 {
+  color: #fde68a;
+}
+
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-gray-400,
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300 {
+  border-color: var(--app-border);
+}
+
+html.dark .border-white\/60 {
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+html.dark .border-red-200 {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+html.dark .border-blue-200,
+html.dark .border-sky-200,
+html.dark .border-indigo-200,
+html.dark .border-cyan-200 {
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+html.dark .border-amber-100,
+html.dark .border-amber-200,
+html.dark .border-lime-100 {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+html.dark .ring-slate-100 {
+  --tw-ring-color: rgba(148, 163, 184, 0.16);
+}
+
+html.dark .ring-blue-100,
+html.dark .ring-sky-100,
+html.dark .ring-indigo-100,
+html.dark .ring-cyan-100 {
+  --tw-ring-color: rgba(96, 165, 250, 0.22);
+}
+
+html.dark .ring-amber-100,
+html.dark .ring-lime-100 {
+  --tw-ring-color: rgba(251, 191, 36, 0.22);
+}
+
+html.dark .from-blue-50 {
+  --tw-gradient-from: #0f172a var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(15 23 42 / 0) var(--tw-gradient-to-position);
+}
+
+html.dark .to-indigo-100 {
+  --tw-gradient-to: #111827 var(--tw-gradient-to-position);
+}
+
+html.dark .hover\:bg-slate-200:hover,
+html.dark .hover\:bg-gray-400:hover {
+  background-color: #475569;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+html.dark input:not([type="checkbox"]),
+html.dark select,
+html.dark textarea {
+  background-color: var(--app-surface);
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--app-text-soft);
+}
+
+html.dark .focus\:bg-white:focus {
+  background-color: var(--app-surface);
+}
+
+html.dark .shadow,
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg {
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.28);
 }

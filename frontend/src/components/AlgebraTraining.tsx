@@ -341,7 +341,7 @@ export default function AlgebraTraining({
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.62fr_0.38fr]">
-        <section className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-[radial-gradient(circle_at_top_left,_rgba(165,180,252,0.32),_transparent_36%),linear-gradient(135deg,_#eef2ff_0%,_#f8fafc_48%,_#ecfeff_100%)] p-5 shadow-sm">
+        <section className="training-hero relative overflow-hidden rounded-3xl border border-indigo-100 bg-[radial-gradient(circle_at_top_left,_rgba(165,180,252,0.32),_transparent_36%),linear-gradient(135deg,_#eef2ff_0%,_#f8fafc_48%,_#ecfeff_100%)] p-5 shadow-sm">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-700">
             <span className="rounded-full bg-white/80 px-3 py-1 shadow-sm">
               {t("modules.algebra")}

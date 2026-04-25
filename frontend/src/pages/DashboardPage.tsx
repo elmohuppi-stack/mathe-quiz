@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { useTranslation } from "../i18n/useTranslation";
 import api from "../lib/api";
@@ -280,7 +280,13 @@ export function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-600">Mathe-Quiz</h1>
+          <Link
+            to="/dashboard"
+            className="text-2xl font-bold text-blue-600 transition hover:text-blue-700 hover:underline"
+            aria-label="Zum Dashboard"
+          >
+            Mathe-Quiz
+          </Link>
           <div className="space-x-4 flex items-center">
             <LanguageSelector />
             <span className="text-gray-700">

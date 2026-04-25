@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "./store/authStore";
 import { useLanguageStore } from "./i18n/useTranslation";
+import { useThemeStore } from "./store/themeStore";
 import { LegalFooter } from "./components/LegalFooter";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -67,6 +68,7 @@ function App() {
     const initializeApp = async () => {
       await useAuthStore.getState().loadFromStorage();
       useLanguageStore.getState().loadFromStorage();
+      useThemeStore.getState().loadFromStorage();
       setIsLoaded(true);
     };
     initializeApp();

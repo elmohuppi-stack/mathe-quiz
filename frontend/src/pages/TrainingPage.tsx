@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/authStore";
 import MentalMathTraining from "../components/MentalMathTraining";
 import FractionsTraining from "../components/FractionsTraining";
 import AlgebraTraining from "../components/AlgebraTraining";
+import { ThemeToggle } from "../components/ThemeToggle";
 import api from "../lib/api";
 
 type Module = "mental-math" | "fractions" | "algebra";
@@ -242,12 +243,15 @@ export default function TrainingPage() {
                   </span>
                 ) : null}
               </div>
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
-              >
-                {t("common.exit")}
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <ThemeToggle />
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
+                >
+                  {t("common.exit")}
+                </button>
+              </div>
               {levelError ? (
                 <p className="text-sm text-red-600">{levelError}</p>
               ) : null}
