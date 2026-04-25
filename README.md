@@ -149,10 +149,16 @@ Die produktive Zielumgebung bleibt:
 - Frontend-Domain: `mathe-quiz.elmarhepp.de`
 - API-Domain: `mathe-quiz-api.elmarhepp.de`
 - Deploy-Pfad: `/var/www/mathe-quiz`
-- Web-Port intern: `3031`
-- API-Port intern: `3032`
+- Web-Port intern: `3041`
+- API-Port intern: `3042`
 
 Der finale produktive Betrieb soll weiterhin auf dem bestehenden Hetzner-Multi-App-Server mit zentralem Host-Nginx und TLS via Certbot erfolgen.
+
+Fuer den Produktionsstart auf Hetzner sollte das Compose-Setup mit der dedizierten Datei gestartet werden:
+
+```bash
+docker compose --env-file .env.production up -d --build
+```
 
 ## Naechste sinnvolle Schritte
 

@@ -8,8 +8,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mathe_pass}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test:
         [
@@ -28,8 +26,9 @@ services:
     container_name: mathe-quiz-validator
     environment:
       PYTHONUNBUFFERED: 1
-    ports:
-      - "${VALIDATOR_PORT:-3001}:3001"
+      PORT: ${VALIDATOR_INTERNAL_PORT:-8001}
+    expose:
+      - "${VALIDATOR_INTERNAL_PORT:-8001}"
     restart: unless-stopped
 
   backend:
@@ -38,13 +37,14 @@ services:
       dockerfile: backend/Dockerfile
     container_name: mathe-quiz-backend
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-mathe_user}:${POSTGRES_PASSWORD:-mathe_pass}@postgres:5432/${POSTGRES_DB:-mathe_quiz}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3031}
-      VALIDATOR_URL: ${VALIDATOR_URL:-http://validator:3001}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://mathe-quiz.elmarhepp.de}
+      VALIDATOR_URL: ${VALIDATOR_URL:-http://validator:8001}
     ports:
-      - "${API_PORT:-3032}:3000"
+      - "127.0.0.1:${API_PORT:-3042}:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,17 +56,17 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://mathe-quiz-api.elmarhepp.de}
+        VITE_LEGAL_NAME: ${VITE_LEGAL_NAME:-}
+        VITE_LEGAL_EMAIL: ${VITE_LEGAL_EMAIL:-}
+        VITE_LEGAL_ADDRESS_LINE_1: ${VITE_LEGAL_ADDRESS_LINE_1:-}
+        VITE_LEGAL_ADDRESS_LINE_2: ${VITE_LEGAL_ADDRESS_LINE_2:-}
+        VITE_LEGAL_COUNTRY: ${VITE_LEGAL_COUNTRY:-}
+        VITE_LEGAL_CONTENT_RESPONSIBLE: ${VITE_LEGAL_CONTENT_RESPONSIBLE:-}
     container_name: mathe-quiz-frontend
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3032}
-      VITE_LEGAL_NAME: ${VITE_LEGAL_NAME:-}
-      VITE_LEGAL_EMAIL: ${VITE_LEGAL_EMAIL:-}
-      VITE_LEGAL_ADDRESS_LINE_1: ${VITE_LEGAL_ADDRESS_LINE_1:-}
-      VITE_LEGAL_ADDRESS_LINE_2: ${VITE_LEGAL_ADDRESS_LINE_2:-}
-      VITE_LEGAL_COUNTRY: ${VITE_LEGAL_COUNTRY:-}
-      VITE_LEGAL_CONTENT_RESPONSIBLE: ${VITE_LEGAL_CONTENT_RESPONSIBLE:-}
     ports:
-      - "${WEB_PORT:-3031}:5173"
+      - "127.0.0.1:${WEB_PORT:-3041}:80"
     depends_on:
       - backend
     restart: unless-stopped

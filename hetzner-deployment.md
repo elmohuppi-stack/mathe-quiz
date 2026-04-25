@@ -212,7 +212,7 @@ Fuer neue Projekte ist das der Zielablauf:
 
 1. Repository nach `/var/www/<APP_SLUG>` deployen
 2. Produktions-Umgebungsvariablen setzen
-3. `docker compose up -d --build`
+3. `docker compose --env-file .env.production up -d --build`
 4. Nginx-Site anlegen
 5. HTTPS mit Certbot aktivieren
 6. technisch verifizieren
@@ -243,8 +243,8 @@ Der Deployment-Workflow soll sich an diesem Muster orientieren:
 ```bash
 cd /var/www/<APP_SLUG>
 git pull origin main
-docker compose up -d --build
-docker compose exec api <migration-command>
+docker compose --env-file .env.production up -d --build
+docker compose --env-file .env.production exec api <migration-command>
 ```
 
 Wichtig:
@@ -283,8 +283,8 @@ Bitte richte Docker Compose, Produktions-Env, Host-Nginx und die Verifikationssc
 | `APP_SLUG`        | `mathe-quiz`                  |
 | `FRONTEND_DOMAIN` | `mathe-quiz.elmarhepp.de`     |
 | `API_DOMAIN`      | `mathe-quiz-api.elmarhepp.de` |
-| `WEB_PORT`        | `3031`                        |
-| `API_PORT`        | `3032`                        |
+| `WEB_PORT`        | `3041`                        |
+| `API_PORT`        | `3042`                        |
 | `DEPLOY_PATH`     | `/var/www/mathe-quiz`         |
 
 Falls ein interner Validator-Service genutzt wird, bleibt er ausschliesslich im Compose-Netzwerk und erhaelt keine oeffentliche Weiterleitung im Host-Nginx.
