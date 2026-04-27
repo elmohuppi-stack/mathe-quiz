@@ -53,34 +53,29 @@ Damit zeigen alle Subdomains auf denselben Server. Welche App ausgeliefert wird,
 
 ## 4. Erwartete Produktions-Umgebung
 
-### 4.1 Root `.env`
-
-```env
-APP_DOMAIN=<FRONTEND_DOMAIN>
-API_DOMAIN=<API_DOMAIN>
-WEB_PORT=<WEB_PORT>
-API_PORT=<API_PORT>
-```
-
-### 4.2 Backend `backend/.env.production`
+### 4.1 Root `.env.production`
 
 ```env
 NODE_ENV=production
-PORT=3000
+WEB_PORT=<WEB_PORT>
+API_PORT=<API_PORT>
+VALIDATOR_INTERNAL_PORT=8001
+POSTGRES_DB=mathe_quiz
+POSTGRES_USER=mathe_user
+POSTGRES_PASSWORD=<SET_STRONG_POSTGRES_PASSWORD>
+JWT_SECRET=<SET_LONG_RANDOM_JWT_SECRET>
 FRONTEND_ORIGIN=https://<FRONTEND_DOMAIN>
-```
-
-### 4.3 Frontend `frontend/.env.production`
-
-```env
+VALIDATOR_URL=http://validator:8001
 VITE_API_BASE_URL=https://<API_DOMAIN>
+VITE_LEGAL_NAME=<LEGAL_NAME>
+VITE_LEGAL_EMAIL=<LEGAL_EMAIL>
+VITE_LEGAL_ADDRESS_LINE_1=<LEGAL_ADDRESS_LINE_1>
+VITE_LEGAL_ADDRESS_LINE_2=<LEGAL_ADDRESS_LINE_2>
+VITE_LEGAL_COUNTRY=Deutschland
+VITE_LEGAL_CONTENT_RESPONSIBLE=<LEGAL_CONTENT_RESPONSIBLE>
 ```
 
-### 4.4 Interner Service `validator/.env.production` nur wenn vorhanden
-
-```env
-PORT=8001
-```
+Bei einem Compose-Deployment wird diese Root-Datei direkt von `docker compose --env-file .env.production` ausgewertet. Separate `backend/.env.production`- oder `frontend/.env.production`-Dateien werden dabei nicht automatisch eingelesen.
 
 ### 4.5 Datenschutzrelevante Betriebsdaten
 

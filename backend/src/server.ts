@@ -30,8 +30,14 @@ import {
 import prisma from "./db.js";
 
 const port = parseInt(process.env.PORT || "3000");
-const jwtSecret = process.env.JWT_SECRET || "dev-secret-change-me";
+const jwtSecret = process.env.JWT_SECRET;
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+
+if (!jwtSecret) {
+  throw new Error(
+    "Missing JWT_SECRET environment variable. Copy .env.example to .env for local development.",
+  );
+}
 
 /**
  * Session-level task hash cache to prevent duplicate tasks within a session

@@ -61,8 +61,11 @@ Die wichtigsten Verzeichnisse sind aktuell:
 Der schnellste lokale Start ist:
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
+
+Vor dem ersten Start muessen in `.env` mindestens `POSTGRES_PASSWORD` und `JWT_SECRET` gesetzt werden. Die Vorlage in `.env.example` enthaelt absichtlich nur Platzhalter und keine Repository-Secrets mehr.
 
 Danach sind die Services standardmaessig erreichbar unter:
 
@@ -157,8 +160,11 @@ Der finale produktive Betrieb soll weiterhin auf dem bestehenden Hetzner-Multi-A
 Fuer den Produktionsstart auf Hetzner sollte das Compose-Setup mit der dedizierten Datei gestartet werden:
 
 ```bash
+cp .env.production.example .env.production
 docker compose --env-file .env.production up -d --build
 ```
+
+Vor dem Start muessen in `.env.production` insbesondere `POSTGRES_PASSWORD` und `JWT_SECRET` durch echte Werte ersetzt werden.
 
 ## Naechste sinnvolle Schritte
 

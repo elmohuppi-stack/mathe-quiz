@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-mathe_quiz}
       POSTGRES_USER: ${POSTGRES_USER:-mathe_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mathe_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env or --env-file}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -39,8 +39,8 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mathe_user}:${POSTGRES_PASSWORD:-mathe_pass}@postgres:5432/${POSTGRES_DB:-mathe_quiz}
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mathe_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env or --env-file}@postgres:5432/${POSTGRES_DB:-mathe_quiz}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env or --env-file}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://mathe-quiz.elmarhepp.de}
       VALIDATOR_URL: ${VALIDATOR_URL:-http://validator:8001}
     ports:
