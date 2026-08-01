@@ -1,24 +1,9 @@
+# Die Datenbank liegt seit der Konsolidierung in der gemeinsamen Instanz
+# (Stack unter /var/www/pg-shared, erreichbar als "pg-shared" im Netz
+# hetzner-network). Der frühere postgres:15-alpine Service ist deshalb
+# entfallen; sein Datenverzeichnis liegt noch im Volume
+# mathe-quiz_postgres_data und kann weg, sobald die Umstellung stabil läuft.
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: mathe-quiz-postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-mathe_quiz}
-      POSTGRES_USER: ${POSTGRES_USER:-mathe_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env or --env-file}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-mathe_user} -d ${POSTGRES_DB:-mathe_quiz}",
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
   validator:
     build:
       context: .
@@ -39,18 +24,22 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mathe_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env or --env-file}@postgres:5432/${POSTGRES_DB:-mathe_quiz}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mathe_user}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env or --env-file}@pg-shared:5432/${POSTGRES_DB:-mathe_quiz}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env or --env-file}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-https://mathe-quiz.elmarhepp.de}
       VALIDATOR_URL: ${VALIDATOR_URL:-http://validator:8001}
     ports:
       - "127.0.0.1:${API_PORT:-3042}:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
       validator:
         condition: service_started
     restart: unless-stopped
+    # "default" muss hier explizit stehen: sobald ein Service networks:
+    # deklariert, wird er dem Default-Netz nicht mehr automatisch zugeordnet -
+    # der Backend würde sonst den validator nicht mehr erreichen.
+    networks:
+      - default
+      - hetzner-network
 
   frontend:
     build:
@@ -71,5 +60,6 @@ services:
       - backend
     restart: unless-stopped
 
-volumes:
-  postgres_data:
+networks:
+  hetzner-network:
+    external: true
