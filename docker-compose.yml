@@ -16,7 +16,13 @@ services:
       - "${VALIDATOR_INTERNAL_PORT:-8001}"
     restart: unless-stopped
 
-  backend:
+  # Der Servicename trägt den App-Slug, weil Compose ihn in JEDEM Netz als
+  # Alias setzt — im hetzner-network also serverweit. Bis zum 9. August 2026
+  # hieß dieser Service "backend" und der von mediathek genauso: ein Name mit
+  # zwei Adressen, zwischen denen Dockers DNS rotiert. Begründung und der
+  # Vorfall vom 8. August stehen in ARCHITEKTUR.md 6.1.
+  # Der container_name bleibt, er war schon eindeutig.
+  mathe-quiz-api:
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -36,7 +42,7 @@ services:
     restart: unless-stopped
     # "default" muss hier explizit stehen: sobald ein Service networks:
     # deklariert, wird er dem Default-Netz nicht mehr automatisch zugeordnet -
-    # der Backend würde sonst den validator nicht mehr erreichen.
+    # mathe-quiz-api würde sonst den validator nicht mehr erreichen.
     networks:
       - default
       - hetzner-network
@@ -57,7 +63,7 @@ services:
     ports:
       - "127.0.0.1:${WEB_PORT:-3041}:80"
     depends_on:
-      - backend
+      - mathe-quiz-api
     restart: unless-stopped
 
 networks:

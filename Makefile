@@ -112,7 +112,7 @@ dev-logs:
 
 # View backend logs
 logs-backend:
-	$(COMPOSE) logs -f backend
+	$(COMPOSE) logs -f mathe-quiz-api
 
 dev-logs-backend:
 	$(DEV_COMPOSE) logs -f backend
@@ -142,7 +142,7 @@ ps:
 
 # Shell into backend container
 shell-backend:
-	$(COMPOSE) exec backend sh
+	$(COMPOSE) exec mathe-quiz-api sh
 
 # Shell into database container
 shell-db:
