@@ -1,6 +1,6 @@
 # Die Datenbank liegt seit der Konsolidierung in der gemeinsamen Instanz
 # (Stack unter /var/www/pg-shared, erreichbar als "pg-shared" im Netz
-# hetzner-network). Der frühere postgres:15-alpine Service ist deshalb
+# apps-net). Der frühere postgres:15-alpine Service ist deshalb
 # entfallen; sein Datenverzeichnis liegt noch im Volume
 # mathe-quiz_postgres_data und kann weg, sobald die Umstellung stabil läuft.
 services:
@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
 
   # Der Servicename trägt den App-Slug, weil Compose ihn in JEDEM Netz als
-  # Alias setzt — im hetzner-network also serverweit. Bis zum 9. August 2026
+  # Alias setzt — im apps-net also serverweit. Bis zum 9. August 2026
   # hieß dieser Service "backend" und der von mediathek genauso: ein Name mit
   # zwei Adressen, zwischen denen Dockers DNS rotiert. Begründung und der
   # Vorfall vom 8. August stehen in ARCHITEKTUR.md 6.1.
@@ -45,7 +45,7 @@ services:
     # mathe-quiz-api würde sonst den validator nicht mehr erreichen.
     networks:
       - default
-      - hetzner-network
+      - apps-net
 
   frontend:
     build:
@@ -67,5 +67,5 @@ services:
     restart: unless-stopped
 
 networks:
-  hetzner-network:
+  apps-net:
     external: true
