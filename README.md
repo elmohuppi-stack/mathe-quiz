@@ -52,7 +52,11 @@ Die wichtigsten Verzeichnisse sind aktuell:
 - [validator](validator): interner Python-Service fuer Algebra-Auswertung
 - [anforderungen.md](anforderungen.md): fachliche Anforderungen und Akzeptanzkriterien
 - [implementierungsplan.md](implementierungsplan.md): technischer und produktseitiger Projektstand
-- [hetzner-deployment.md](hetzner-deployment.md): Zielbild fuer den Hetzner-Rollout
+- [hetzner-deployment.md](hetzner-deployment.md): **ueberholt.** Eine Kopie der alten
+  Multi-App-Vorlage aus der Zeit vor der Konsolidierung -- sie beschreibt einen
+  Server, den es so nicht mehr gibt. Verbindlich ist das Repo `platform`:
+  `NEUE-APP.md` fuer neue Apps, `DEPLOYMENT.md` fuer den Betrieb
+  (`platform/OFFENE-PROBLEME.md`, Punkt 37)
 
 ## Lokale Entwicklung
 
@@ -142,7 +146,7 @@ Noch offen oder nur teilweise umgesetzt sind:
 - dedizierte Session-Zusammenfassung nach Trainingsende
 - Profilseite, Datenexport und definierter Loeschprozess
 - finale rechtliche Pruefung der Texte und Datenschutz-Prozesse fuer den Livegang
-- CI/CD-Hardening und finaler Hetzner-Rollout
+- CI/CD-Hardening
 - breitere automatisierte Testabdeckung fuer UI- und Integrationspfade
 
 ## Deployment-Ziel
@@ -155,9 +159,11 @@ Die produktive Zielumgebung bleibt:
 - Web-Port intern: `3041`
 - API-Port intern: `3042`
 
-Der finale produktive Betrieb soll weiterhin auf dem bestehenden Hetzner-Multi-App-Server mit zentralem Host-Nginx und TLS via Certbot erfolgen.
+Die App laeuft produktiv auf `nuernberg-16gb` (netcup) hinter dem zentralen
+Host-Nginx, TLS via Certbot, Datenbank in der gemeinsamen Instanz `pg-shared`
+(`mathe_quiz`). Deploy-Weg und Pruefschritte stehen in `platform/DEPLOYMENT.md`.
 
-Fuer den Produktionsstart auf Hetzner sollte das Compose-Setup mit der dedizierten Datei gestartet werden:
+Auf dem Server wird das Compose-Setup mit der dedizierten Datei gestartet:
 
 ```bash
 cp .env.production.example .env.production
